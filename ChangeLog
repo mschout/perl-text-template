@@ -1,8 +1,17 @@
+1999-12-23  Mark-Jason Dominus  <mjd@plover.com>
+
+	* Template.pm: Version 1.23:
+
+	Added PREPEND option.
+
+	Fixed bug: Options not being propagated to new call in
+	fill_in_file and fill_this_in.
+
 Sun Mar  7 21:03:15 1999  Mark-Jason Dominus  <mjd@plover.com>
 
 	* Template.pm: Version 1.20:
 	
-	Added support for DELIMTER options: Check for it in ->new and
+	Added support for DELIMITER options: Check for it in ->new and
  		->fill_in Pass to ->compile if necessary.
 		
 	Added a new test file and documentation for this option.

@@ -8,7 +8,7 @@
 # same terms as Perl iteself.  
 # If in doubt, write to mjd-perl-template+@pobox.com for a license.
 #
-# Version 1.23
+# Version 1.31
 
 package Text::Template;
 require 5.004;
@@ -18,7 +18,7 @@ use Exporter;
 use vars '$ERROR';
 use strict;
 
-$Text::Template::VERSION = '1.23';
+$Text::Template::VERSION = '1.31';
 my %GLOBAL_PREPEND = ('Text::Template' => '');
 
 sub Version {
@@ -31,7 +31,7 @@ sub _param {
   for $kk ($k, "\u$k", "\U$k", "-$k", "-\u$k", "-\U$k") {
     return $h{$kk} if exists $h{$kk};
   }
-  return undef;
+  return;
 }
 
 sub always_prepend
@@ -105,6 +105,13 @@ sub _acquire_data {
     my $pack = ref $self;
     die "Can only acquire data for $pack objects of subtype STRING, but this is $type; aborting";
   }
+  $self->{DATA_ACQUIRED} = 1;
+}
+
+sub source {
+  my ($self) = @_;
+  $self->_acquire_data unless $self->{DATA_ACQUIRED};
+  return $self->{SOURCE};
 }
 
 sub compile {
@@ -329,7 +336,10 @@ sub fill_this_in {
 }
 
 sub fill_in_string {
-  Text::Template->fill_this_in(@_);
+  my $string = shift;
+  my $package = _param('package', @_);
+  push @_, 'package' => scalar(caller) unless defined $package;
+  Text::Template->fill_this_in($string, @_);
 }
 
 sub fill_in_file {
@@ -406,7 +416,7 @@ Text::Template - Expand template text with embedded Perl
 
 =head1 VERSION
 
-This file documents C<Text::Template> version B<1.23>
+This file documents C<Text::Template> version B<1.30>
 
 =head1 SYNOPSIS
 
@@ -1289,7 +1299,7 @@ an alternative set of delimiters with the C<DELIMITERS> option.  For
 example, if you would like code fragments to be delimited by C<[@-->
 and C<--@]> instead of C<{> and C<}>, use
 
-	... DELIMITERS =E<gt> [ '[@--', '--@]' ], ...
+	... DELIMITERS => [ '[@--', '--@]' ], ...
 
 Note that these delimiters are I<literal strings>, not regexes.  (I
 tried for regexes, but it complicates the lexical analysis too much.)
@@ -1486,10 +1496,9 @@ it would turn into
 
 So for your JavaScript, just write
 
-	    {q{
-	      if (br== "n3") { 
-	  	  // etc.
-	      }
+	    {q{if (br== "n3") { 
+	  	 // etc.
+	       }}
 	    }
 
 and it'll come out as
@@ -1689,6 +1698,7 @@ Many thanks to the following people for offering support,
 encouragement, advice, and all the other good stuff.  
 
 Klaus Arnhold /
+Kevin Atteson /
 Chris.Brezil /
 Mike Brodhead /
 Tom Brown /
@@ -1699,6 +1709,7 @@ San Deng /
 Bob Dougherty /
 Dan Franklin /
 Todd A. Green /
+Donald L. Greer Jr. /
 Michelangelo Grigni /
 Tom Henry /
 Matt X. Hunter /
@@ -1746,12 +1757,6 @@ for demanding less verbose fragments like they have in ASP, for
 helping me figure out the Right Thing, and, especially, for talking me
 out of adding any new syntax.  These discussions resulted in the
 C<$OUT> feature.
-
-=item Shabbir J. Safdar
-
-for volunteering to maintain a slightly modified version of
-C<Text::Template> which will run under perl.5003 and other early
-versions. 
 
 =back
 

@@ -6,13 +6,13 @@
 use lib '../blib/lib';
 use Text::Template 'fill_in_file', 'fill_in_string';
 
-die "This is the test program for Text::Template version 1.23.
+die "This is the test program for Text::Template version 1.31.
 You are using version $Text::Template::VERSION instead.
 That does not make sense.\n
 Aborting"
-  unless $Text::Template::VERSION == 1.23;
+  unless $Text::Template::VERSION == 1.31;
 
-print "1..4\n";
+print "1..6\n";
 
 $n=1;
 $Q::n = $Q::n = 119; 
@@ -50,7 +50,25 @@ $out =
 print +($out eq "With a message here? It is good!\n" ? '' : 'not '), "ok $n\n";
 $n++;
 
+# (5) This test failed in 1.25.  It was supplied by Donald L. Greer Jr.
+# Note that it's different from (1)  in that there's no explicit 
+# package=> argument.
+use vars qw($string $foo $r);
+$string='Hello {$foo}';
+$foo="Don";
+$r = fill_in_string($string);
+print (($r eq 'Hello Don' ? '' : 'not '), 'ok ', $n++, "\n");
 
+# (6) This test failed in 1.25.  It's a variation on (5)
+package Q2;
+use Text::Template 'fill_in_string';
+use vars qw($string $foo $r);
+$string='Hello {$foo}';
+$foo="Don";
+$r = fill_in_string($string);
+print (($r eq 'Hello Don' ? '' : 'not '), 'ok ', $main::n++, "\n");
+
+package main;
 
 END { $TEMPFILE && unlink $TEMPFILE }
 

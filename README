@@ -1,5 +1,5 @@
 
-Text::Template v1.23
+Text::Template v1.31
 
 This is a library for generating form letters, building HTML pages, or
 filling in templates generally.  A `template' is a piece of text that
@@ -74,11 +74,17 @@ and other collateral information from
 <URL:http://www.plover.com/~mjd/perl/Template/>.
 
 ----------------------------------------------------------------
-What's new in v1.223since v1.22:
+What's new in v1.31 since v1.23:
+
+	Just bug fixes---fill_in_string was failing.  Thanks to 
+        Donald L. Greer Jr. for the test case.
+
+----------------------------------------------------------------
+What's new in v1.23 since v1.22:
 
 	Small bug fix:  DELIMITER and other arguments were being
 	ignored in calls to fill_in_file and fill_this_in.  (Thanks to
-	Jonathan Roy.)
+	Jonathan Roy for reporting this.)
 
 ----------------------------------------------------------------
 What's new in v1.22 since v1.20:

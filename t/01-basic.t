@@ -11,11 +11,11 @@ print "1..29\n";
 
 $n=1;
 
-die "This is the test program for Text::Template version 1.23.
+die "This is the test program for Text::Template version 1.31.
 You are using version $Text::Template::VERSION instead.
 That does not make sense.\n
 Aborting"
-  unless $Text::Template::VERSION == 1.23;
+  unless $Text::Template::VERSION == 1.31;
 
 $template_1 = <<EOM;
 We will put value of \$v (which is "abc") here -> {\$v}
