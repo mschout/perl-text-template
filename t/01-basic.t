@@ -3,7 +3,6 @@
 # test apparatus for Text::Template module
 # still incomplete.
 
-use lib '../blib/lib', './blib/lib';
 use Text::Template;
 $X::v = $Y::v = 0;		# Suppress `var used only once'
 
@@ -11,11 +10,11 @@ print "1..30\n";
 
 $n=1;
 
-die "This is the test program for Text::Template version 1.42.
+die "This is the test program for Text::Template version 1.43.
 You are using version $Text::Template::VERSION instead.
 That does not make sense.\n
 Aborting"
-  unless $Text::Template::VERSION == 1.42;
+  unless $Text::Template::VERSION == 1.43;
 
 $template_1 = <<EOM;
 We will put value of \$v (which is "abc") here -> {\$v}

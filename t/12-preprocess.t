@@ -3,14 +3,13 @@
 # Tests for PREPROCESSOR features
 # These tests first appeared in version 1.25.
 
-use lib '../blib/lib';
 use Text::Template::Preprocess;
 
-die "This is the test program for Text::Template::Preprocess version 1.42.
+die "This is the test program for Text::Template::Preprocess version 1.43.
 You are using version $Text::Template::Preprocess::VERSION instead.
 That does not make sense.\n
 Aborting"
-  unless $Text::Template::Preprocess::VERSION == 1.42;
+  unless $Text::Template::Preprocess::VERSION == 1.43;
 
 $TMPFILE = "tt$$";
 

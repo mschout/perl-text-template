@@ -3,12 +3,12 @@
 #
 # Fill in `templates'
 #
-# Copyright 1996, 1997, 1999, 2001 M-J. Dominus.
+# Copyright 1996, 1997, 1999, 2001, 2002 M-J. Dominus.
 # You may copy and distribute this program under the
 # same terms as Perl iteself.  
 # If in doubt, write to mjd-perl-template+@plover.com for a license.
 #
-# Version 1.42
+# Version 1.43
 
 package Text::Template;
 require 5.004;
@@ -18,7 +18,7 @@ use Exporter;
 use vars '$ERROR';
 use strict;
 
-$Text::Template::VERSION = '1.42';
+$Text::Template::VERSION = '1.43';
 my %GLOBAL_PREPEND = ('Text::Template' => '');
 
 sub Version {
@@ -77,7 +77,7 @@ sub always_prepend
     $self->{SOURCE} = $source;
 
     bless $self => $pack;
-    #  $self->compile;
+    return unless $self->_acquire_data;
     
     $self;
   }
@@ -406,7 +406,7 @@ sub _load_text {
 
 sub _is_clean {
   my $z;
-  eval { ($z = join('', @_)), eval "#$z"; 1 }   # LOD
+  eval { ($z = join('', @_)), eval '#' . substr($z,0,0); 1 }   # LOD
 }
 
 sub _unconditionally_untaint {
@@ -469,7 +469,7 @@ Text::Template - Expand template text with embedded Perl
 
 =head1 VERSION
 
-This file documents C<Text::Template> version B<1.42>
+This file documents C<Text::Template> version B<1.43>
 
 =head1 SYNOPSIS
 
@@ -1786,14 +1786,14 @@ For updates, visit C<http://www.plover.com/~mjd/perl/Template/>.
 
 =head2 Support?
 
-This software is version 1.42.  It may have bugs.  Suggestions and bug
+This software is version 1.43.  It may have bugs.  Suggestions and bug
 reports are always welcome.  Send them to
 C<mjd-perl-template+@plover.com>.  (That is my address, not the address
 of the mailing list.  The mailing list address is a secret.)
 
 =head1 LICENSE
 
-    Text::Template version 1.42
+    Text::Template version 1.43
     Copyright (C) 2001 Mark Jason Dominus
 
     This program is free software; you can redistribute it and/or
@@ -1832,6 +1832,7 @@ Joseph Cheek /
 Gene Damon /
 San Deng /
 Bob Dougherty /
+Marek Grac /
 Dan Franklin /
 gary at dls.net /
 Todd A. Green /

@@ -2,7 +2,6 @@
 #
 # test apparatus for Text::Template module
 
-use lib '../blib/lib';
 use Text::Template;
 
 BEGIN {
@@ -13,11 +12,11 @@ BEGIN {
   }
 }
 
-die "This is the test program for Text::Template version 1.42.
+die "This is the test program for Text::Template version 1.43.
 You are using version $Text::Template::VERSION instead.
 That does not make sense.\n
 Aborting"
-  unless $Text::Template::VERSION == 1.42;
+  unless $Text::Template::VERSION == 1.43;
 
 print "1..3\n";
 
