@@ -2,3 +2,4 @@ MANIFEST
 Makefile.PL
 README
 Template.pm
+t/template1.t

@@ -1,356 +1,368 @@
+# -*- perl -*-
 # Text::Template.pm
 #
 # Fill in `templates'
 #
-# Copyright 1995 M-J. Dominus.
+# Copyright 1996, 1997, 1999 M-J. Dominus.
 # You may copy and distribute this program under the
-# same terms as Perl iteself.  If in doubt, write to mjd@pobox.com
-# for a license.
+# same terms as Perl iteself.  
+# If in doubt, write to mjd-perl-template@pobox.com for a license.
 #
-# Version 0.1 alpha $Revision: 1.2 $ $Date: 1995/12/27 18:43:47 $
+# Version 1.0 
 
-=head1 Text::Template
+package Text::Template;
+use Exporter;
+@EXPORT_OK = qw(fill_in_file fill_in_string TTerror);
+use vars '$ERROR';
+use strict;
 
-This is a library for printing form letters!  This is a library for
-playing Mad Libs!  
 
-A `template' is a piece of text that has little Perl programs embedded
-in it here and there.  When you `fill in' a template, you evaluate the
-little programs and replace them with their values.
+$Text::Template::VERSION = '1.0';
 
-This is a good way to generate many kinds of output, such as error
-messages and HTML pages.  Here is one way I use it: I am a freelance
-computer consultant; I write world-wide web applications.  Usually I
-work with an HTML designer who designs the pages for me.
+sub Version {
+  $Text::Template::VERSION;
+}
 
-Often these pages change a lot over the life of the project: The
-client's legal department takes several tries to get the disclaimer
-just right; the client changes the background GIF a few times; the
-text moves around, and soforth.  These are all changes that are easy
-to make.  Anyone proficient with the editor can go and make them.  But
-if the page is embedded inside a Perl program, I don't want the
-designer to change it because you never know what they might muck up.
-I'd like to put the page in an external file instead.
+sub _param {
+  my $kk;
+  my ($k, %h) = @_;
+  for $kk ($k, "\u$k", "\U$k", "-$k", "-\u$k", "-\U$k") {
+    return $h{$kk} if exists $h{$kk};
+  }
+  return undef;
+}
 
-The trouble with that is that parts of the page really are generated
-by the program; it needs to fill in certani values in some places,
-maybe conditionally include some text somewhere else.  The page can't
-just be a simple static file that the program reads in and prints out.
+sub new {
+  my $pack = shift;
+  my %a = @_;
+  my $stype = _param('type', %a) || 'FILE';
+  my $source = _param('source', %a);
+  unless (defined $source) {
+    require Carp;
+    Carp::croak("Usage: $ {pack}::new(TYPE => ..., SOURCE => ...)");
+  }
+  my $self = {TYPE => $stype,
+	      SOURCE => $source,
+	     };
 
-A template has blanks, and when you print one out, the blanks are
-filled in automatically, so this is no trouble.  And because the
-blanks are small and easy to recognize, it's easy to tell the page
-designer to stay away from them.
+  bless $self => $pack;
+#  $self->compile;
 
-Here's a sample template:
+  $self;
+}
+
+sub compile {
+  my $self = shift;
+
+  return 1 if $self->{TYPE} eq 'PREPARSED';
+
+  if ($self->{TYPE} eq 'FILE') {
+    my $text = _load_text($self->{SOURCE});
+    unless (defined $text) {
+      # _load_text already set $ERROR
+      return undef;
+    }
+    $self->{TYPE} = 'STRING';
+    $self->{SOURCE} = $text;
+  } elsif ($self->{TYPE} eq 'ARRAY') {
+    $self->{TYPE} = 'STRING';
+    $self->{SOURCE} = join '', @{$self->{SOURCE}};
+  } elsif ($self->{TYPE} eq 'FILEHANDLE') {
+    $self->{TYPE} = 'STRING';
+    local $/;
+    local *FH = $self->{SOURCE};
+    $self->{SOURCE} = <FH>;
+  }
+
+  unless ($self->{TYPE} eq 'STRING') {
+    my $pack = ref $self;
+    die "Can only compile $pack objects of subtype STRING, but this is $self->{TYPE}; aborting";
+  }
+
+  my @tokens = split /([{}\n]|\\.)/, $self->{SOURCE};
+  my $state = 'TEXT';
+  my $depth = 0;
+  my $lineno = 1;
+  my @content;
+  my $cur_item = '';
+  my $prog_start;
+  while (@tokens) {
+    my $t = shift @tokens;
+    next if $t eq '';
+    if ($t eq '{') {
+      if ($depth == 0) {
+	push @content, [$state, $cur_item, $lineno] if $cur_item ne '';
+	$cur_item = '';
+	$state = 'PROG';
+	$prog_start = $lineno;
+      } else {
+	$cur_item .= $t;
+      }
+      $depth++;
+    } elsif ($t eq '}') {
+      $depth--;
+      if ($depth < 0) {
+	$ERROR = "Unmatched close brace at line $lineno";
+	return undef;
+      } elsif ($depth == 0) {
+	push @content, [$state, $cur_item, $prog_start] if $cur_item ne '';
+	$state = 'TEXT';
+	$cur_item = '';
+      } else {
+	$cur_item .= $t;
+      }
+    } elsif ($t =~ /^\\(.)/) {
+      $cur_item .= $1;
+    } elsif ($t eq "\n") {
+      $lineno++;
+      $cur_item .= $t;
+    } else {
+      $cur_item .= $t;
+    }
+  }
+
+  if ($state eq 'PROG') {
+    $ERROR = "End of data inside program text that began at line $prog_start";
+    return undef;
+  } elsif ($state eq 'TEXT') {
+    push @content, [$state, $cur_item, $lineno] if $cur_item ne '';
+  } else {
+    die "Can't happen error #1";
+  }
+  
+  $self->{TYPE} = 'PREPARSED';
+  $self->{SOURCE} = \@content;
+  1;
+}
+
+sub fill_in {
+  my $fi_self = shift;
+
+  unless ($fi_self->{TYPE} eq 'PREPARSED') {
+    $fi_self->compile 
+      or return undef;
+  }
+
+  my %fi_a = @_;
+  my $fi_package = _param('package', %fi_a) || caller();
+  my $fi_broken  = _param('broken', %fi_a)  || \&_default_broken;
+  my $fi_broken_arg = _param('broken_arg', %fi_a) || [];
+  my $fi_safe = _param('safe', %fi_a);
+
+  my $fi_r = '';
+  my $fi_item;
+  foreach $fi_item (@{$fi_self->{SOURCE}}) {
+    my ($fi_type, $fi_text, $fi_lineno) = @$fi_item;
+    if ($fi_type eq 'TEXT') {
+      $fi_r .= $fi_text;
+    } elsif ($fi_type eq 'PROG') {
+      my $fi_progtext = "package $fi_package; $fi_text";
+      my $fi_res;
+      if ($fi_safe) {
+	$fi_res = $fi_safe->reval($fi_progtext);
+      } else {
+	$fi_res = eval $fi_progtext;
+      }
+      if ($@) {
+	$fi_res = $fi_broken->(text => $fi_text,
+			       error => $@,
+			       lineno => $fi_lineno,
+			       arg => $fi_broken_arg,
+			       );
+	if (defined $fi_res) {
+	  $fi_r .= $fi_res;
+	} else {
+	  return $fi_res;		# Undefined means abort processing
+	}
+      } else {
+	$fi_r .= $fi_res;
+      }
+    } else {
+      die "Can't happen error #2";
+    }
+  }
+  $fi_r;
+}
+
+sub fill_this_in {
+  my $pack = shift;
+  my $text = shift;
+  my $templ = $pack->new(TYPE => 'STRING', SOURCE => $text)
+    or return undef;
+  $templ->compile or return undef;
+  my $result = $templ->fill_in(@_);
+  $result;
+}
+
+sub fill_in_string {
+  Text::Template->fill_this_in(@_);
+}
+
+sub fill_in_file {
+  my $fn = shift;
+  my $templ = Text::Template->new(TYPE => 'FILE', SOURCE => $fn)
+    or return undef;
+  $templ->compile or return undef;
+  my $text = $templ->fill_in(@_);
+  $text;
+}
+
+sub _default_broken {
+  my %a = @_;
+  my $prog_text = $a{text};
+  my $err = $a{error};
+  my $lineno = $a{lineno};
+  $err =~ s/\s+at .*//s;
+  "Program fragment at line $lineno delivered error ``$err''";
+}
+
+sub _load_text {
+  my $fn = shift;
+  local *F;
+  unless (open F, $fn) {
+    $ERROR = "Couldn't open file $fn: $!";
+    return undef;
+  }
+  local $/;
+  <F>;
+}
+
+sub TTerror { $ERROR }
+
+1;
+
+
+=head1 NAME 
+
+Text::Template - Expand template text with embedded Perl
+
+=head1 SYNOPSIS
+
+ use Text::Template;
+
+ $template = new Text::Template (TYPE => FILE,  SOURCE => 'filename.tmpl');
+ $template = new Text::Template (TYPE => ARRAY, SOURCE => [ ... ] );
+ $template = new Text::Template (TYPE => FILEHANDLE, SOURCE => $fh );
+ $template = new Text::Template (TYPE => STRING, SOURCE => '...' );
+
+ $recipient = 'King';
+ $text = $template->fill_in();  # Replaces `{$recipient}' with `King'
+ print $text;
+
+ $T::recipient = 'Josh';
+ $text = $template->fill_in(PACKAGE => T);
+ print $text;
+
+ $text = $template->fill_in(BROKEN => \&callback, BROKEN_ARG => [...]);
+ $text = $template->fill_in(SAFE => $compartment, ...);
+
+ use Text::Template 'fill_in_string';
+ $text = fill_in_string( <<EOM, 'package' => T);
+ Dear {$recipient},
+ Pay me at once.
+        Love, 
+         G.V.
+ EOM
+
+ use Text::Template ''fill_in_file';
+ $text = fill_in_file($filename, ...);
+
+=head1 DESCRIPTION
+
+This is a library for generating form letters, building HTML pages, or
+filling in templates generally.  A `template' is a piece of text that
+has little Perl programs embedded in it here and there.  When you
+`fill in' a template, you evaluate the little programs and replace
+them with their values.  
+
+Here's an example of a template:
 
 	Dear {$title} {$lastname},
 
 	It has come to our attention that you are delinquent in your
-	{$last_paid_month} payment.  Please remit ${$amount} immediately,
-	or your patellae may be needlessly endangered.
+	{$monthname[$last_paid_month]} payment.  Please remit
+	${sprintf("%.2f", $amount)} immediately, or your patellae may
+	be needlessly endangered.
 
 			Love,
 
 			Mark "Vizopteryx" Dominus
 
 
-Pretty simple, isn't it?  Items in curly braces C<{> C<}> get filled
-in; everything else stays the same.  Anyone can understand that.  You
-can totally believe that the art director isn't going to screw this up
-while editing it.
+The result of filling in this template is a string, which might look
+something like this:
 
-You can put any perl code you want into the braces, so instead of
-C<{$amount}>, you might want to use C<{sprintf("%.2f", $amount)}>, to
-print the amount rounded off to the nearest cent.
+	Dear Mr. Gates,
 
-This is good for generating form letters, HTML pages, error messages,
-and probably a lot of other things.  
+	It has come to our attention that you are delinquent in your
+	February payment.  Please remit
+	$392.12 immediately, or your patellae may
+	be needlessly endangered.
 
-Detailed documentation follows:
 
-=cut
+			Love,
 
-package Text::Template;
+			Mark "Vizopteryx" Dominus
 
-use Exporter ;
-@ISA = qw(Exporter);
+You can store a template in a file outside your program.  People can
+modify the template without modifying the program.  You can separate
+the formatting details from the main code, and put the formatting
+parts of the program into the template.  That prevents code bloat and
+encourages functional separation.
 
-=head1 Version
-  Version Text::Template ();
+=head1 Template Syntax
 
-Returns the current version of the C<Text::Template> package.  The
-current version is C<'Text::Template 0.1 alpha $Revision: 1.2 $ $Date: 1995/12/27 18:43:47 $'>.
+When people make a template module like this one, they almost always
+start by inventing a special syntax for substitutions.  For example,
+they build it so that a string like C<%%VAR%%> is replaced with the
+value of C<$VAR>.  Then they realize the need extra formatting, so
+they put in some special syntax for formatting.  Then they need a
+loop, so they invent a loop syntax.  Pretty soon they have a new
+little template language.
 
-=cut
+This approach has two problems: First, their little language is
+crippled. If you need to do something the author hasn't thought of,
+you lose.  Second: Who wants to learn another language?  You already
+know Perl, so why not use it?
 
-sub Version {
-  'Text::Template 0.1 alpha $Revision: 1.2 $ $Date: 1995/12/27 18:43:47 $';
-}
+C<Text::Template> templates are programmed in I<Perl>.  You embed Perl
+code in your template, with C<{> at the beginning and C<}> at the end.
+If you want a variable interpolated, you write it the way you would in
+Perl.  If you need to make a loop, you can use any of the Perl loop
+constructions.  All the Perl built-in functions are available.
 
-=head1 Constructor: C<new>
+=head1 Details
 
-  new Text::Template ( attribute => value, ... );
+=head2 Template Parsing
 
-This creates a new template object.  You specify the source of the
-template with a set of attribute-value pairs in the arguments.
+The C<Text::Template> module scans the template source.  An open brace
+C<{> begins a program fragment, which continues until the matching
+close brace C<}>.  When the template is filled in, the program
+fragments are evaluated, and each one is replaced with the resulting
+value to yield the text that is returned.
 
-At present, there are only two attributes.  One is C<type>; the other
-is C<source>.  C<type> can be C<FILEHANDLE>, C<FILE>, or C<ARRAY>.  
-If C<type> is C<FILE>, then the C<source> is interpreted as the name
-of a file that contains the template to fill out.  If C<type> is
-C<FILEHANDLE>, then the C<source> is interpreted as the name of a
-filehandle, which, when read, will deliver the template to fill out.
-A C<type> of C<ARRAY> means that the C<source> is a reference to an
-array of strings; the template is the concatentation of these strings.
+A backslash C<\> in front of a brace (or another backslash) escapes
+its special meaning.    The result of filling out this template:
 
-Neither C<type> nor C<source> are optional yet.  
+	\{ The sum of 1 and 2 is {1+2}  \}
 
-Here are some examples of how to call C<new>:
+is
 
-	$template = new Text::Template 
-		('type' => 'ARRAY', 
-		 'source' => [ "Dear {\$recipient}\n",
-				"Up your {\$nose}.\n",
-				"Love, {\$me}.\n" ]);
+	{ The sum of 1 and 2 is 3  }
 
+If you have an unmatched brace, C<Text::Template> will return a
+failure code and a warning about where the problem is.
 
-	$template = new Text::Template 
-		('type' => 'FILE', 
-		 'source' => '/home/mjd/src/game/youlose.tmpl');
+Each program fragment should be a sequence of Perl statements, which
+are evaluated the usual way.  The result of the last statement
+executed will be evaluted in scalar context; the result of this
+statement is a string, which is interpolated into the template in
+place of the program fragment itself.
 
-C<new> returns a template object on success, and C<undef> on failure.  On
-an error, it puts an error message in the variable
-C<$Text::Template::ERROR>.
+The fragments are evaluated in order, and side effects from earlier
+fragments will persist into later fragments:
 
-=cut
-
-sub new {
-  my $package = shift;
-  my $parser = {};
-  $parser->{'lookahead'} = undef; # Type of next token
-  $parser->{'yylval'} = undef;	# Semantic value of next token
-  $parser->{'nextplease'} = 1;
-  $parser->{'state'} = 0 ;
-  $parser->{'states'} = [] ;
-  $parser->{'privpack'} = 'Text::Template::pack::' . &gensym;
-  $parser->{'values'} = [];	# Value stack
-  return undef unless $parser->{'lexer'} = new Text::Template::Lexer @_;
-  return bless $parser, $package;
-}
-
-$sym = 'sym000';
-sub gensym {
-  return $sym++;
-}
-
-
-=head1 C<fill_in>
-
-Fills in a template.  Returns the resulting text.
-
-Like C<new>, C<fill_in> accepts a set of attribute-value pairs.  At
-present, the only attributes are C<package> and C<broken>. 
-
-Here's an example: Suppose that C<$template> contains a template
-object that we created with this template:
-
-	Dear {$name},
-		You owe me ${sprintf("%.2f", $amount)}.
-		Pay or I will break your {$part}.
-				Love,
-				Uncle Dominus.  
-
-Here's how you might fill it in:
-
-        $name = 'Donald';
-	$amount = 141.61;
-	$part = 'hyoid bone';
-
-	$text = $template->fill_in();
-
-Here's another example:
-
-	Your Royal Highness,
-
-		Enclosed please find a list of things I have gotten
-		for you since 1907:
-
-		{ $list = '';
-		  foreach $item (@things) {
-		    $list .= " o \u$item\n";
-		  }
-		  $list
-		}
-
-			Signed,
-			Lord Chamberlain
-
-We want to pass in an array which will be assigned to the array
-C<@things>.  Here's how to do that:
-
-	@the_things = ('ivory', 'apes', 'peacocks', );
-	$template->fill_in();
-
-
-This is not very safe.  The reason this isn't as safe is that if you
-had any variables named C<$list> or $<$item> in scope in your program
-at the point you called C<fill_in>, their values would be clobbered by
-the act of filling out the template.  
-
-The next section will show how to make this safer.
-
-=head2 C<package>
-
-The value of the C<package> attribute names a package which contains
-the variables that should be used to fill in the template.  If you
-omit the C<package> attribute, C<fill_in> uses the package that was
-active when it was called.
-
-Here's a safer version of the `Lord Chamberlain' example from the
-previous section:
-
-	@VARS::the_things = ('ivory', 'apes', 'peacocks', );
-	$template->fill_in('package' => VARS);
-
-This call to C<fill_in> clobbers C<$VARS::list> and C<$VARS::item>
-instead of clobbering C<$list> and C<$item>.  If your program didn't
-use anything in the C<VARS> package, you don't have to worry that
-filling out the template is altering on your variables.
-	
-=head2 broken 
-
-If you specify a value for the C<broken> attribute, it should be a
-reference to a function that C<fill_in> can call if one of the little
-programs fails to evaluate.
-
-C<fill_in> will pass an associative array to the C<broken> function.
-The associative array will have at least these two members:
-
-	text => (The full text of the little program that failed)
-	error => (The text of the error message (C<$@>) generated by eval)
-
-If the C<broken> function returns a text string, C<fill_in> will
-insert it into the template in place of the broken program, just as
-though the broken program had evaluated successfully and yielded that
-same string.  If the C<broken> function returns C<undef>, C<fill_in>
-will stop filling in the template, and will immediately return undef
-itself.
-
-If you don't specify a C<broken> function, you get a default one that
-inserts something like this:
-
-	Warning
-
-	This part of the template returned the following errors:
-
-	syntax error at -e line 1, near "$amount;"
-	Missing right bracket at -e line 1, at end of line
-	Execution of -e aborted due to compilation errors.
-
-		
-=cut
-
-sub fill_in {
-  my $fi_self = shift;
-  my %fi_args = @_;
-  my $fi_pack = $fi_args{'package'};
-  
-  unless ($fi_pack) {
-    ($fi_pack) = caller(1);
-  }
-
-  my $fi_eval_failed = $fi_args{'broken'} || \&default_broken;
-
-  for (;;) {
-    my ($fi_type, $fi_value) = $fi_self->{'lexer'}->get();
-    return undef unless defined($fi_type);
-    if ($fi_type eq EOF) {
-      return $fi_output;
-    } elsif ($fi_type eq 'PLAINTEXT') {
-      $fi_output .= $fi_value;
-    } elsif ($fi_type eq 'PROGTEXT') {
-      my $fi_val = eval "package $fi_pack; $fi_value";
-      if ($@) {
-	$fi_val = &$fi_eval_failed($fi_value, $@);
-	return undef unless defined($fi_val);
-      } 
-      $fi_output .= $fi_val;
-    } else {
-      $ERROR = "Unexpected error in Template module: Lexer returned bizarre token type=$fi_type.";
-      return undef;
-    }
-  }
-}
-
-sub default_broken {
-  my (%args) = @_;
-  my ($prog_text, $error_text) = @args{'text', 'error'};
-
-  return <<EOM;
-Warning
-
-This part of the template returned the following errors:
-
-$err_text
-
-EOM
-}
-
-
-=head1 C<fill_this_in>
-
-Maybe it's not worth your trouble to put the template into a file;
-maybe it's a small file, and you want to leave it inline in the code.
-Maybe you don't want to have to worry about managing template objects.
-In that case, use C<fill_this_in>.  You give it the entire template as
-a string argument, follow with variable substitutions just like in
-C<fill_in>, and it gives you back the filled-in text.
-
-An example:
-
-	$Q::name = 'Donald';
-	$Q::amount = 141.61;
-	$Q::part = 'hyoid bone';
-
-	$text = fill_this_in Text::Template ( <<EOM, 'package' => Q);
-	Dear {\$name},
-	You owe me {sprintf('%.2f', \$amount)}.  
-	Pay or I will break your {\$part}.
-		Love,
-		Grand Vizopteryx of Irkutsk.
-	EOM
-
-
-=cut
-
-sub fill_this_in {
-  my $package = shift;
-  my $template = shift;
-  my $tmpl = $package->new('type' => ARRAY, 'source' => [$template]);
-  return undef unless $tmpl;
-  my $result = $tmpl->fill_in(@_);
-  return $result;
-}
-
-=head1 Template Format
-
-Here's the deal with templates: Anything in braces is a little
-program, which is evaluated, and replaced with its perl value.  A
-backslashed character has no special meaning, so to include a literal
-C<{> in your template, use C<\{>, and to include a literal C<\>, use
-C<\\>.  
-
-A little program starts at an open brace and ends at the matching
-close brace.  This means that your little programs can include braces
-and you don't need to worry about it.  See the example below for an
-example of braces inside a little program.
-
-If an expression at the beginning of the template has side effects,
-the side effects carry over to the subsequent expressions.  For
-example:
-
-	{$x = @things; ''} The lord high Chamberlain has gotten {$x}
+	{$x = @things; ''} The Lord High Chamberlain has gotten {$x}
 	things for me this year.  
 	{ $diff = $x - 17; 
 	  $more = 'more'
@@ -362,19 +374,425 @@ example:
 	} 
 	That is {$diff} {$more} than he gave me last year.
 
-Notice that after we set $x in the first little program, its value
-carries over to the second little program, and that we can set
-C<$diff> and C<$more> on one place and use their values again later.
+The value of C<$x> set in the first line will persist into the next
+fragment that begins on the third line, and the values of C<$diff> and
+C<$more> set in the second fragment will persist and be interpolated
+into the last line.  The output will look something like this:
 
-All variables are evaluated in the package you specify as an argument
-to C<fill_in>.  This means that if your templates don't do anything
-egregiously stupid, you don't have to worry that evaluation of the
-little programs will creep out into the rest of your program and wreck
-something.  On the other hand, there's really no way to protect
-against a template that says
+	 The Lord High Chamberlain has gotten 42
+	things for me this year.  
+
+	That is 35 more than he gave me last year.
+
+That is all the syntax there is.  
+
+=head2 General Remarks
+
+All C<Text::Template> functions return C<undef> on failure, and set the
+variable C<$Text::Template::ERROR> to contain an explanation of what
+went wrong.  For example, if you try to create a template from a file
+that does not exist, C<$Text::Template::ERROR> will contain something like:
+
+	Couldn't open file xyz.tmpl: No such file or directory
+
+=head2 C<new>
+
+	$template = new Text::Template ( attribute => value, ... );
+
+This creates and returns a new template object.  You specify the
+source of the template with a set of attribute-value pairs in the
+arguments.  It returns C<undef> and sets C<$Text::Template::ERROR> if
+it can't create the template object.
+
+The C<TYPE> attribute says what kind of thing the source is.  Most common is 
+a filename:
+
+	new Text::Template ( TYPE => 'FILE', SOURCE => $filename );
+
+This reads the template from the specified file.  The filename is
+opened with the Perl C<open> command, so it can be a pipe or anything
+else that makes sense with C<open>.
+
+The C<TYPE> can also be C<STRING>, in which case the C<SOURCE> should
+be a string:
+
+	new Text::Template ( TYPE => 'STRING', 
+                             SOURCE => "This is the actual template!" );
+
+The C<TYPE> can be C<ARRAY>, in which case the source should be a
+reference to an array of strings.  The concatenation of these strings
+is the template:
+
+	new Text::Template ( TYPE => 'ARRAY', 
+                             SOURCE => [ "This is ", "the actual", 
+                                         " template!",
+                                       ]
+                           );
+
+The C<TYPE> can be FILEHANDLE, in which case the source should be an
+open filehandle (such as you got from the C<FileHandle> or C<IO::*>
+packages, or a glob, or a reference to a glob).  In this case
+C<Text::Template> will read the text from the filehandle up to
+end-of-file, and that text is the template.
+
+If you omit the C<TYPE> attribute, it's taken to be C<FILE>.
+C<SOURCE> is required.  If you omit it, the program will abort.
+
+The words C<TYPE> and C<SOURCE> can be spelled any of the following ways:
+
+	TYPE	SOURCE
+	Type	Source
+	type	source
+	-TYPE	-SOURCE
+	-Type	-Source
+	-type	-source
+
+Pick a style you like and stick with it.
+
+=head2 C<compile>
+
+	$template->compile()
+
+Loads all the template text from the template's source, parses and
+compiles it.  If successful, returns true; otherwise returns false and
+sets C<$Text::Template::ERROR>.  If the template is already compiled,
+it returns true and does nothing.
+
+You don't usually need to invoke this function, because C<fill_in>
+(see below) compiles the template if it isn't compiled already.
+
+=head2 C<fill_in>
+
+	$template->fill_in(OPTIONS);
+
+Fills in a template.  Returns the resulting text if successful.
+Otherwise, returns C<undef>  and sets C<$Text::Template::ERROR>.
+
+The I<OPTIONS> are a hash, or a list of key-value pairs.  You can
+write the key names in any of the six usual styles as above; this
+means that where this manual says C<PACKAGE> you can actually use any
+of 
+
+	PACKAGE Package package -PACKAGE -Package -package
+
+Pick a style you like and stick with it.  The all-lowercase versions
+may yield spurious warnings about
+
+	Ambiguous use of package => resolved to "package"
+
+so you might like to avoid them and use the capitalized versions.
+
+At present, there are four legal options:  C<PACKAGE>, C<BROKEN>,
+C<BROKEN_ARG>, and C<SAFE>.
+
+=over 4
+
+=item C<PACKAGE>
+
+C<PACKAGE> specifies the name of a package in which the program
+fragments should be evaluated.  The default is to use the package from
+which C<fill_in> was called.  For example, consider this template:
+
+	The value of the variable x is {$x}.
+
+If you use C<$template-E<gt>fill_in(PACKAGE =E<gt> 'R')> , then the C<$x> in
+the template is actually replaced with the value of C<$R::x>.  If you
+omit the C<PACKAGE> option, C<$x> will be replaced with the value of
+the C<$x> variable in the package that actually called C<fill_in>.
+
+You should almost always use C<PACKAGE>.  If you don't, and your
+template makes changes to variables, those changes will be propagated
+back into the main program.  Evaluating the template in a private
+package helps prevent this.  The template can still modify variables
+in your program if it wants to, but it will have to do so explicitly.
+See the section at the end on `Security'.
+
+Here's an example of using C<PACKAGE>:
+
+	Your Royal Highness,
+
+	Enclosed please find a list of things I have gotten
+	for you since 1907:
+
+	{ $list = '';
+	  foreach $item (@items) {
+	    $list .= " o \u$item\n";
+	  }
+	  $list;
+	}
+
+	Signed,
+	Lord High Chamberlain
+
+We want to pass in an array which will be assigned to the array
+C<@items>.  Here's how to do that:
+
+
+	@items = ('ivory', 'apes', 'peacocks', );
+	$template->fill_in();
+
+This is not very safe.  The reason this isn't as safe is that if you
+had any variables named C<$list> or C<$item> in scope in your program
+at the point you called C<fill_in>, their values would be clobbered by
+the act of filling out the template.  The problem is the same as if
+you had written a subroutine that used those variables in the same
+waythat the template does.
+
+One solution to this is to make the C<$item> and C<$list> variables
+private to the template by declaring them with C<my>.  If the template
+does this, you are safe.  
+
+But if you use the C<PACKAGE> option, you will probably be safe even
+if the template does I<not> declare its variables with C<my>:
+
+	@Q::items = ('ivory', 'apes', 'peacocks', );
+	$template->fill_in(PACKAGE => 'Q');
+
+In this case the template will clobber the variables C<$Q::item> and
+C<$Q::list>, which are not related to the ones your program was using.
+
+Templates cannot affect variables in the main program that are
+declared with C<my>, unless you give the template references to those
+variables.
+
+=item C<BROKEN>
+
+If any of the program fragments fails to compile or aborts for any
+reason, C<Text::Template> will call the C<BROKEN> function that you
+supply with the C<BROKEN> attribute.  The function will tell
+C<Text::Template> what to do next.  The value for this attribute is a
+reference to your C<BROKEN> function.  
+
+If the C<BROKEN> function returns C<undef>, C<Text::Template> will
+immediately abort processing the template and return the text that it
+has accumulated so far.  If your function does this, it should set a
+flag that you can examine after C<fill_in> returns so that you can
+tell whether there was a premature return or not.
+
+If the C<BROKEN> function returns any other value, that value will be
+interpolated into the template as if that value had been the return
+value of the program fragment to begin with.
+
+If you don't specify a C<BROKEN> function, C<Text::Template> supplies
+a default one that returns something like
+
+	Program fragment at line 17 delivered error ``Illegal
+	division by 0''
+
+Since this is interpolated into the template at the place the error
+occurred, a template like this one:
+
+	(3+4)*5 = { 3+4)*5 }
+
+yields this result:
+
+	(3+4)*5 = Program fragment at line 1 delivered error
+	``syntax error''
+
+If you specify a value for the C<BROKEN> attribute, it should be a
+reference to a function that C<fill_in> can call instead of the
+default function.
+
+C<fill_in> will pass an associative array to the C<broken> function.
+The associative array will have at least these four members:
+
+=over 4
+
+=item C<text>
+
+The source code of the program fragment that failed
+
+=item C<error>
+
+The text of the error message (C<$@>) generated by eval
+
+=item C<lineno>
+
+The line number of the template data at which the  program fragment
+began
+
+=back
+
+There may also be an C<arg> member.  See C<BROKEN_ARG>, below
+
+=item C<BROKEN_ARG>
+
+If you supply the C<BROKEN_ARG> option to C<fill_in>, the value of the
+option is passed to the C<BROKEN> function whenever it is called.  The
+default C<BROKEN> function ignores the C<BROKEN_ARG>, but you can
+write a custom C<BROKEN> function that uses the C<BROKEN_ARG> to get
+more information about what went wrong. 
+
+The C<BROKEN> function could also use the C<BROKEN_ARG> as a reference
+to store an error message or some other information that it wants to
+communicate back to the caller.  For example:
+
+	$error = '';
+
+	sub my_broken {	
+	   my %args = @_;
+	   my $err_ref = $args{arg};
+	   ...
+	   $$err_ref = "Some error message";
+	   return undef;
+	}
+
+	$template->fill_in(BROKEN => \&my_broken,
+			   BROKEN_ARG => \$error,
+			  );
+
+	if ($error) {
+	  die "It didn't work: $error";
+	}
+
+If one of the program fragments in the template fails, it will call
+the C<BROKEN> function, C<my_broken>, and pass it the C<BROKEN_ARG>,
+which is a reference to C<$error>.  C<my_broken> can store an error
+message into C<$error> this way.  Then the function that called
+C<fill_in> can see if C<my_broken> has left an error message for ity
+to find, and proceed accordingly.
+
+=item C<SAFE>
+
+If you give C<fill_in> a C<SAFE> option, its value should be a safe
+compartment object from the C<Safe> package.  All evaluation of
+program fragments will be performed in this compartment.  See L<Safe>
+for full details.
+
+=back
+
+=head1 Convenience Functions
+
+=head2 C<fill_this_in>
+
+The basic way to fill in a template is to create a template object and
+then call C<fill_in> on it.   This is useful if you want to fill in
+the same template more than once.
+
+In some programs, this can be cumbersome.  C<fill_this_in> accepts a
+string, which contains the template, and a list of options, which are
+passed to C<fill_in> as above.  It constructs the template object for
+you, fills it in as specified, and returns the results.  It returns
+C<undef> and sets C<$Text::Template::ERROR> if it couldn't generate
+any results.
+
+An example:
+
+	$Q::name = 'Donald';
+	$Q::amount = 141.61;
+	$Q::part = 'hyoid bone';
+
+	$text = Text::Template->fill_this_in( <<EOM, PACKAGE => Q);
+	Dear {\$name},
+	You owe me {sprintf('%.2f', \$amount)}.  
+	Pay or I will break your {\$part}.
+		Love,
+		Grand Vizopteryx of Irkutsk.
+	EOM
+
+Notice how we included the template in-line in the program by using a
+`here document' with the C<E<lt>E<lt>> notation.
+
+C<fill_this_in> is probably obsolete.  It is only here for backwards
+compatibility.  You should use C<fill_in_string> instead.  It is
+described in the next section.
+
+=head2 C<fill_in_string>
+
+It is stupid that C<fill_this_in> is a class method.  It should have
+been just an imported function, so that you could omit the
+C<Text::Template-E<gt>> in the example above.  But I made the mistake
+four years ago and it is too late to change it.
+
+C<fill_in_string> is exactly like C<fill_this_in> except that it is
+not a method and you can omit the C<Text::Template-E<gt>> and just say
+
+	print fill_in_string(<<EOM, ...);
+	Dear {$name},
+	  ...
+	EOM
+
+To us C<fill_in_string>, you need to say
+
+	use Text::Template 'fill_in_string';
+
+at the top of your program.   You should probably use
+C<fill_in_string> instead of C<fill_this_in>.
+
+=head2 C<fill_in_file>
+
+If you import C<fill_in_file>, you can say
+
+	$text = fill_in_file(filename, ...);
+
+The C<...> are passed to C<fill_in> as above.  The filename is the
+name of the file that contains the template you want to fill in.  It
+returns the result text. or C<undef>, as usual.
+
+If you are going to fill in the same file more than once in the same
+program you should use the longer C<new> / C<fill_in> sequence instead.
+It will be a lot faster because it only has to read and parse the file
+once.
+
+=head2 Including files into templates
+
+People always ask for this.  ``Why don't you have an include
+function?'' they want to know.  The short answer is this is Perl, and
+Perl already has an include function.  If you want it, you can just put
+
+	{qx{cat filename}}
+
+into your template.  Voila.
+
+If you don't want to use C<cat>, you can write a little four-line
+function that opens a file and dumps out its contents, and call it
+from the template.  I wrote one for you.  In the template, you can say
+
+	{Text::Template::_load_text(filename)}
+
+If that is too verbose, here is a trick.  Suppose the template package
+that you are going to be mentioning in the C<fill_in> call is package
+C<Q>.  Then in the main program, write
+
+	*Q::include = \&Text::Template::_load_text;
+
+This imports the C<_load_text> function into package C<Q> with the
+name C<include>.  From then on, any template that you fill in with
+package C<Q> can say
+
+	{include(filename)}
+
+to insert the text from the named file at that point.
+
+Suppose you don't want to insert a plain text file, but rather you
+want to include one template within another?  Just use C<fill_in_file>
+in the template itself:
+
+	{Text::Template::fill_in_file(filename)}
+
+You can do the same importing trick if this is too much to type.
+
+=head1 Miscellaneous
+
+=head2 Security Matters
+
+All variables are evaluated in the package you specify with the
+C<PACKAGE> option of C<fill_in>.  if you use this option, and if your
+templates don't do anything egregiously stupid, you won't have to
+worry that evaluation of the little programs will creep out into the
+rest of your program and wreck something.
+
+Nevertheless, there's really no way to protect against a template that
+says
 
 	{ $Important::Secret::Security::Enable = 0; 
 	  # Disable security checks in this program 
+	}
+
+or
+
+	{ $/ = "hoho";   # Sabotage future uses of <FH>.
+	  # $/ is always a global variable
 	}
 
 or even
@@ -382,175 +800,217 @@ or even
 	{ system("rm -rf /") }
 
 so B<don't> go filling in templates unless you're sure you know what's in
-them.  This package may eventually use Perl's C<Safe> extension to
-fill in templates in a safe compartment.
+them.  If you're worried, use the C<SAFE> option.
 
-=head1 Author
+=head2 JavaScript
+
+Jennifer D. St Clair asks:
+
+	> Most of my pages contain JavaScript and Stylesheets.
+        > How do I change the template identifier?  
+
+Jennifer is worried about the braces in the JavaScript being taken as
+the delimiters of the Perl program fragments.  Of course, disaster
+will ensure when perl tries to evaluate these as if they were Perl
+programs.
+
+I didn't provide a facility for changing the braces to something else,
+because it complicates the parsing, and in my experience it isn't
+necessary.  There are two easy solutions:
+
+1. You can put C<\> in front of C<{>, C<}>, or C<\> to remove its
+special meaning.  So, for example, instead of
+
+	    if (br== "n3") { 
+		// etc.
+	    }
+
+you can put
+
+	    if (br== "n3") \{ 
+		// etc.
+	    \}
+
+and it'll come out of the template engine the way you want.
+
+But here is another method that is probably better.  To see how it
+works, first consider what happens if you put this into a template:
+
+	    { 'foo' }
+
+Since it's in braces, it gets evaluated, and obviously, this is going
+to turn into
+
+	    foo
+
+So now here's the trick: In Perl, C<q{...}> is the same as C<'...'>.
+So if we wrote
+
+	    {q{foo}}
+
+it would turn into 
+
+	    foo
+
+So for your JavaScdript, just write
+
+	    {q{
+	      if (br== "n3") { 
+	  	  // etc.
+	      }
+	    }
+
+and it'll come out as
+
+	      if (br== "n3") { 
+	  	  // etc.
+	      }
+
+which is what you want.
+
+This trick is so easy that I thought didn't need to put in the feature
+that lets you change the bracket characters to something else.
+
+=head2 Compatibility
+
+Every effort has been made to make this module compatible with older
+versions.  The single exception is the output format of the default
+C<BROKEN> subroutine; I decided that the olkd format was too verbose.
+If this bothers you, it's easy to supply a custom subroutine that
+yields the old behavior.
+
+This version passes the test suite from the old version.  The old test
+suite is too small, but it's a little reassuring.
+
+=head2 A short note about C<$Text::Template::ERROR>
+
+In the past some people have fretted about `violating the package
+boundary' by examining a variable inside the C<Text::Template>
+package.  Don't feel this way.  C<$Text::Template::ERROR> is part of
+the published, official interface to this package.  It is perfectly OK
+to inspect this variable.  The interface is not going to change.
+
+If it really, really bothers you, you can import a function called
+C<TTerror> that returns the current value of the C<$ERROR> variable.
+So you can say:
+
+	use Text::Template 'TTerror';
+
+	my $template = new Text::Template (SOURCE => $filename);
+	unless ($template) {
+	  my $err = TTerror;
+	  die "Couldn't make template: $err; aborting";
+	}
+
+I don't see what benefit this has over just doing this:
+
+	use Text::Template;
+
+	my $template = new Text::Template (SOURCE => $filename)
+	  or die "Couldn't make template: $Text::Template::ERROR; aborting";
+
+But if it makes you happy to do it that way, go ahead.
+
+=head2 Sticky Widgets in Template Files
+
+The C<CGI> module provides functions for `sticky widgets', which are
+form input controls that retain their values from one page to the
+next.   Sometimes people want to know how to include these widgets
+into their template output.
+
+It's totally straightforward.  Just call the C<CGI> functions from
+inside the template:
+
+	{ $q->checkbox_group(NAME => 'toppings',
+		  	     LINEBREAK => true,
+			     COLUMNS => 3,
+			     VALUES => \@toppings],
+			    );
+	}
+
+
+=head2 Author
 
 Mark-Jason Dominus, Plover Systems
 
-C<mjd@pobox.com>
+C<mjd-perl-template@pobox.com>
 
-=head1 Support?
+You can join a very low-volume (E<lt>10 messages per year) mailing
+list for announcements about this package.  Send an empty note to
+C<mjd-perl-template-request@plover.com> to join.
 
-This software is version 0.1 alpha.  It probably has bugs.  It is
-inadequately tested.  Suggestions and bug reports are always welcome.
+For updates, visit C<http://www.plover.com/~mjd/perl/Template/>.
 
-=head1 Bugs
+=head2 Support?
 
-This package should fill in templates in a C<Safe> compartment.
+This software is version 1.0.  It is a complete rewrite of an older
+package, and may have bugs.  It is inadequately tested.  Suggestions
+and bug reports are always welcome.  Send them to
+C<mjd-perl-template@plover.com>.
 
-The callback function that C<fill_in> calls when a template contains
-an error should be eble to return an error message to the rest of the
-program.
+=head2 Thanks
 
-`my' variables in C<fill_in> are still susceptible to being clobbered
-by template evaluation.  Perhaps it will be safer to make them `local'
-variables.
+Many thanks to the following people for offering support,
+encouragement, advice, and all the other good stuff.  Especially to
+Jonathan Roy for telling me how to do the C<Safe> support (I spent two
+years worrying about it, and then Jonathan pointed out that it was
+trivial.)
+
+Klaus Arnhold /
+Mike Brodhead /
+Tom Brown /
+Tim Bunce /
+Juan Camacho /
+Joseph Cheek /
+San Deng /
+Bob Dougherty /
+Dan Franklin /
+Todd A. Green /
+Michelangelo Grigni /
+Tom Henry /
+Matt X. Hunter /
+Robert M. Ioffe /
+Daniel LaLiberte /
+Reuven M. Lerner /
+Joel Meulenberg /
+Jason Moore /
+Bek Oberin /
+Ron Pero /
+Hans Persson /
+Jonathan Roy /
+Jennifer D. St Clair /
+Uwe Schneider /
+Randal L. Schwartz /
+Michael G Schwern /
+Brian C. Shensky /
+Niklas Skoglund /
+Tom Snee /
+Hans Stoop /
+Michael J. Suzio /
+Dennis Taylor /
+James H. Thompson /
+Shad Todd /
+Andy Wardley /
+Matt Womer /
+Andrew G Wood /
+Michaely Yeung
+
+=head2 Bugs and Caveats
+
+C<my> variables in C<fill_in> are still susceptible to being clobbered
+by template evaluation.  They all begin with C<fi_>, so avoid those
+names in your templates.
 
 Maybe there should be a utility method for emptying out a package?
 
+Maybe there should be a control item for doing #if.  Perl's `if' is
+sufficient, but a little cumbersome to handle the quoting.
+
+The line number information will be wrong if the template's lines are
+not terminated by "\n".  Someone should let me know if this is a
+problem.
+
+There are not enough tests in the test suite.
+
 =cut
 
-package Text::Template::Lexer;
-
-# lexer has the following elements:
-# source, an input source (a filehandle or array of strings)
-# type, an input type (FILE, FILEHANDLE, ARRAY)
-# unbuf, an unget buffer (array of single-char strings)
-
-$fh = 'Text_Template_Lexer_FH00';
-
-%legal_type = ( 'FILE' => 1, 'FILEHANDLE' => 1, 'ARRAY' => 1 );	
-
-sub new {
-  my $package = shift;
-  my $lexer = { @_ };
-  unless ($lexer->{'type'}) {
-    $Text::Template::ERROR = 
-	"You must specify a `type'.";
-    return undef;
-  }
-  unless ($legal_type{$lexer->{'type'}}) {
-    my @types = keys %legal_type;
-    $Text::Template::ERROR = 
-	"{$lexer->{'type'} is not a legal source type.  Legal types are (@types)";
-    return undef;
-  }
-  unless ($lexer->{'source'}) {
-    $Text::Template::ERROR = 
-	"You must specify a `source'.";
-    return undef;
-  }
-  if ($lexer->{'type'} eq FILE) {
-    my $filename = $lexer->{'source'};
-    my $fh = &new_fh();
-    unless (open($fh, "< $filename")) {
-      $Text::Template::ERROR = 
-	  "Couldn\'t open file $filename for reading: $!";
-      return undef;
-    }
-    $lexer->{'source'} = $fh;
-    $lexer->{'type'} = FILEHANDLE;
-  }
-  $lexer->{'unbuf'} = [ ];
-  bless $lexer, $package;
-}
-
-# return token type , value pair for next token
-# types are:
-# PLAINTEXT  value is text
-sub get {
-  my $self = shift;
-  my $bracecount = 0;
-  my $string;
-  my $c = '';
-
-  while ($c ne EOF) {
-    $c = $self->get_a_char();
-    if ($c eq '{') {
-      if ($string) {
-	$self->unget_a_char($c);
-	return (PLAINTEXT, $string);
-      } else {
-	# read up to matching close brace into $string
-	$bracecount += 1;
-	while ($bracecount) {
-	  $c = $self->get_a_char();
-	  $string .= $c;
-	  if ($c eq '{') {
-	    $bracecount += 1;
-	  } elsif ($c eq '}') {
-	    $bracecount -= 1;
-	  } elsif ($c eq EOF) {
-	    $Text::Template::ERROR = 
-		"End of template inside a little program!";
-	    return undef;
-	  }
-	}
-	chop $string;		# Chop last close brace
-	return (PROGTEXT, $string);
-      }
-    } elsif ($c eq '\\') {
-      my $cc = $self->get_a_char();
-      return undef unless defined($cc);
-      if ($cc eq EOF) {
-	$string .= '\\';
-      } else {
-	$string .= $cc;
-      }
-    } elsif ($c eq EOF) {
-      if ($string eq '') {
-	return EOF;
-      } else {
-	return (PLAINTEXT, $string);
-      }
-    } else {
-      $string .= $c;
-    }
-  }
-}
-
-sub get_a_char { 
-  my $self = shift;
-  my $c;
-
-  if (@{$self->{'unbuf'}}) {
-    return shift @{$self->{'unbuf'}};
-  } 
-
-  if ($self->{'type'} eq FILEHANDLE) {
-    $c = getc($self->{'source'});
-    return EOF if $c eq '';
-    return $c;
-  } elsif ($self->{'type'} eq 'ARRAY') {
-    my @nextchars;
-
-    # Get the next string from the input arry and split it into an
-    # array of characters.  If the string is empty, skip it and get
-    # another.  If you run out of strings, return EOF.
-    until (@nextchars = split(//, shift @{$self->{'source'}})) {
-      return EOF unless @{$self->{'source'}};
-    }
-
-    $c = shift @nextchars;
-    $self->{'unbuf'} = [ @nextchars ];
-    return $c;
-  } else {
-    $Text::Template::ERROR = 
-	"Unknown input source type: {$self->{'type'}}";
-    return undef;
-  }
-}
-sub unget_a_char {
-  my $self = shift;
-  my $c = shift;
-
-  unshift(@{$self->{'unbuf'}}, $c);
-  return;
-}
-
-  
-sub new_fh {
-  return $fh++;
-}
