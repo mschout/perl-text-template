@@ -75,6 +75,18 @@ and other collateral information from
 
 ----------------------------------------------------------------
 
+What's new in v1.12 since v1.11:
+
+	I forgot to say that Text::Template ISA Exporter, so the
+	exported functions never got exported.  Duhhh!
+
+	Template TYPEs are now case-insensitive.  The `new' method now
+	diagnoses attempts to use an invalid TYPE.
+
+	More tests for these things.
+
+----------------------------------------------------------------
+
 What's new in v1.11 since v1.10:
 
 	Fixed a bug in the way backslashes were processed.  The 1.10

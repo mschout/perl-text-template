@@ -13,11 +13,12 @@
 package Text::Template;
 require 5.004;
 use Exporter;
+@ISA = qw(Exporter);
 @EXPORT_OK = qw(fill_in_file fill_in_string TTerror);
 use vars '$ERROR';
 use strict;
 
-$Text::Template::VERSION = '1.11';
+$Text::Template::VERSION = '1.12';
 
 sub Version {
   $Text::Template::VERSION;
@@ -32,23 +33,33 @@ sub _param {
   return undef;
 }
 
-sub new {
-  my $pack = shift;
-  my %a = @_;
-  my $stype = _param('type', %a) || 'FILE';
-  my $source = _param('source', %a);
-  unless (defined $source) {
-    require Carp;
-    Carp::croak("Usage: $ {pack}::new(TYPE => ..., SOURCE => ...)");
+{
+  my %LEGAL_TYPE;
+  BEGIN { 
+    %LEGAL_TYPE = map {$_=>1} qw(FILE FILEHANDLE STRING ARRAY);
   }
-  my $self = {TYPE => $stype,
-	      SOURCE => $source,
-	     };
+  sub new {
+    my $pack = shift;
+    my %a = @_;
+    my $stype = uc(_param('type', %a)) || 'FILE';
+    my $source = _param('source', %a);
+    unless (defined $source) {
+      require Carp;
+      Carp::croak("Usage: $ {pack}::new(TYPE => ..., SOURCE => ...)");
+    }
+    unless ($LEGAL_TYPE{$stype}) {
+      require Carp;
+      Carp::croak("Illegal value `$stype' for TYPE parameter");
+    }
+    my $self = {TYPE => $stype,
+		SOURCE => $source,
+	       };
 
-  bless $self => $pack;
-#  $self->compile;
-
-  $self;
+    bless $self => $pack;
+    #  $self->compile;
+    
+    $self;
+  }
 }
 
 sub compile {
@@ -1250,7 +1261,7 @@ exactly the old rule, because I did not like the idea of having to
 write C<{"\\\\"}> to get one backslash.  The rule is now more
 complicated to remember, but probably easier to use.  The rule is now:
 Backslashes are always passed to Perl unchanged I<unless> they occur
-as part of a sequence like C<\\\...\\\{> or C<\\\...\\\}>.  In these
+as part of a sequence like C<\\\\\\{> or C<\\\\\\}>.  In these
 contexts, they are special; C<\\> is replaced with C<\>, and C<\{> and
 C<\}> signal a literal brace. 
 
@@ -1258,7 +1269,7 @@ Examples:
 
 	\{ foo \}
 
-is I<not> evaluated, because the C<\> before the rbaces signals that
+is I<not> evaluated, because the C<\> before the braces signals that
 they should be taken literally.  The result in the output looks like this: 
 
 	{ foo }
@@ -1268,8 +1279,8 @@ This is a syntax error:
 
 	{ "foo}" }
 
-because C<Text::Template> things that the code ends at the first C<}>,
-and then gets upset when it sees the second one.  TO make this work
+because C<Text::Template> thinks that the code ends at the first C<}>,
+and then gets upset when it sees the second one.  To make this work
 correctly, use
 
 	{ "foo\}" }
@@ -1325,7 +1336,7 @@ inside the template:
 	{ $q->checkbox_group(NAME => 'toppings',
 		  	     LINEBREAK => true,
 			     COLUMNS => 3,
-			     VALUES => \@toppings],
+			     VALUES => \@toppings,
 			    );
 	}
 

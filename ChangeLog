@@ -1,3 +1,14 @@
+Sun Feb 28 18:17:24 1999  Mark-Jason Dominus  <mjd@plover.com>
+
+	* Version 1.12:
+
+	Fixed missing @ISA bug.
+	
+	Added TYPE parameter checking to new().  Handling of TYPE option
+ 	is now case-insensitive.
+	
+	Minor doc fixes.
+
 Thu Feb 25 11:32:14 1999  Mark-Jason Dominus  <mjd@plover.com>
 
 	*  Version 1.11:
