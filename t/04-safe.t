@@ -14,13 +14,21 @@ BEGIN {
   }
 }
 
-die "This is the test program for Text::Template version 1.12.
+die "This is the test program for Text::Template version 1.20.
 You are using version $Text::Template::VERSION instead.
 That does not make sense.\n
 Aborting"
-  unless $Text::Template::VERSION == 1.12;
+  unless $Text::Template::VERSION == 1.20;
 
 print "1..16\n";
+
+if ($^O eq 'MacOS') {
+  $BADOP = qq{};
+  $FAILURE = q{};
+} else {
+  $BADOP = qq{kill 0};
+  $FAILURE = q{Program fragment at line 1 delivered error ``kill trapped by operation mask''};
+}
 
 $n=1;
 $v = $v = 119;
@@ -72,7 +80,7 @@ print +($text1 eq $goodoutput ? '' : 'not '), "ok $n\n";
 $n++;
 
 
-$badtemplate     = q{This should fail: { kill 0; 'NOFAIL' }};
+$badtemplate     = qq{This should fail: { $BADOP; 'NOFAIL' }};
 $badnosafeoutput = q{This should fail: NOFAIL};
 $badsafeoutput   = q{This should fail: Program fragment at line 1 delivered error ``kill trapped by operation mask''};
 

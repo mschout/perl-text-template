@@ -1,5 +1,5 @@
 
-Text::Template v1.11
+Text::Template v1.20
 
 This is a library for generating form letters, building HTML pages, or
 filling in templates generally.  A `template' is a piece of text that
@@ -72,6 +72,26 @@ is no address for sending messages to the list.
 You can get the most recent version of Text::Template, news, comments,
 and other collateral information from
 <URL:http://www.plover.com/~mjd/perl/Template/>.
+
+----------------------------------------------------------------
+What's new in v1.20 since v1.12:
+
+	You can now specify that the program fragment delimiters are
+	strings other than { and }.  This has two interesting effects:
+	First, it disables the special meaning of \, so you have to be
+	really, really sure that the delimiters will not appear in
+	your templates.  And second, because of the simplifications
+	introduced by the elimination of \ processing,  template
+	parsing is 20-25% faster.
+
+	See the manual sections on `DELIMITERS' and `Alternative
+	Delimiters'. 
+
+	Fixed bug having to do with undefined values in HASH options.
+	In particular, Text::Template no longer generates a warning if
+	you try to give a variable an undefined value.
+
+
 
 ----------------------------------------------------------------
 

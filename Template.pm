@@ -8,7 +8,7 @@
 # same terms as Perl iteself.  
 # If in doubt, write to mjd-perl-template@pobox.com for a license.
 #
-# Version 1.11
+# Version 1.20
 
 package Text::Template;
 require 5.004;
@@ -18,7 +18,7 @@ use Exporter;
 use vars '$ERROR';
 use strict;
 
-$Text::Template::VERSION = '1.12';
+$Text::Template::VERSION = '1.20';
 
 sub Version {
   $Text::Template::VERSION;
@@ -43,6 +43,7 @@ sub _param {
     my %a = @_;
     my $stype = uc(_param('type', %a)) || 'FILE';
     my $source = _param('source', %a);
+    my $alt_delim = _param('delimiters', %a);
     unless (defined $source) {
       require Carp;
       Carp::croak("Usage: $ {pack}::new(TYPE => ..., SOURCE => ...)");
@@ -53,6 +54,7 @@ sub _param {
     }
     my $self = {TYPE => $stype,
 		SOURCE => $source,
+		(defined $alt_delim ? (DELIM => $alt_delim) : ()),
 	       };
 
     bless $self => $pack;
@@ -62,12 +64,14 @@ sub _param {
   }
 }
 
-sub compile {
-  my $self = shift;
-
-  return 1 if $self->{TYPE} eq 'PREPARSED';
-
-  if ($self->{TYPE} eq 'FILE') {
+# Convert template objects of various types to type STRING,
+# in which the template data is embedded in the object itself.
+sub _acquire_data {
+  my ($self) = @_;
+  my $type = $self->{TYPE};
+  if ($type eq 'STRING') {
+    return 1;
+  } elsif ($type eq 'FILE') {
     my $text = _load_text($self->{SOURCE});
     unless (defined $text) {
       # _load_text already set $ERROR
@@ -75,23 +79,50 @@ sub compile {
     }
     $self->{TYPE} = 'STRING';
     $self->{SOURCE} = $text;
-  } elsif ($self->{TYPE} eq 'ARRAY') {
+  } elsif ($type eq 'ARRAY') {
     $self->{TYPE} = 'STRING';
     $self->{SOURCE} = join '', @{$self->{SOURCE}};
-  } elsif ($self->{TYPE} eq 'FILEHANDLE') {
+  } elsif ($type eq 'FILEHANDLE') {
     $self->{TYPE} = 'STRING';
     local $/;
     local *FH = $self->{SOURCE};
     my $data = <FH>; # Extra assignment avoids bug in Solaris perl5.00[45].
     $self->{SOURCE} = $data;
+  } else {
+    # This should have been caught long ago, so it represents a 
+    # drastic `can't-happen' sort of failure
+    my $pack = ref $self;
+    die "Can only acquire data for $pack objects of subtype STRING, but this is $type; aborting";
   }
+}
 
+sub compile {
+  my $self = shift;
+
+  return 1 if $self->{TYPE} eq 'PREPARSED';
+
+  return undef unless $self->_acquire_data;
   unless ($self->{TYPE} eq 'STRING') {
     my $pack = ref $self;
+    # This should have been caught long ago, so it represents a 
+    # drastic `can't-happen' sort of failure
     die "Can only compile $pack objects of subtype STRING, but this is $self->{TYPE}; aborting";
   }
 
-  my @tokens = split /(\\\\(?=\\*[{}])|\\[{}]|[{}\n])/, $self->{SOURCE};
+  my @tokens;
+  my $delim_pats = shift() || $self->{DELIM};
+
+  
+
+  my ($t_open, $t_close) = ('{', '}');
+  my $DELIM;			# Regex matches a delimiter if $delim_pats
+  if (defined $delim_pats) {
+    ($t_open, $t_close) = @$delim_pats;
+    $DELIM = "(?:(?:\Q$t_open\E)|(?:\Q$t_close\E))";
+    @tokens = split /($DELIM|\n)/, $self->{SOURCE};
+  } else {
+    @tokens = split /(\\\\(?=\\*[{}])|\\[{}]|[{}\n])/, $self->{SOURCE};
+  }
   my $state = 'TEXT';
   my $depth = 0;
   my $lineno = 1;
@@ -101,7 +132,7 @@ sub compile {
   while (@tokens) {
     my $t = shift @tokens;
     next if $t eq '';
-    if ($t eq '{') {
+    if ($t eq $t_open) {	# Brace or other opening delimiter
       if ($depth == 0) {
 	push @content, [$state, $cur_item, $lineno] if $cur_item ne '';
 	$cur_item = '';
@@ -111,7 +142,7 @@ sub compile {
 	$cur_item .= $t;
       }
       $depth++;
-    } elsif ($t eq '}') {
+    } elsif ($t eq $t_close) {	# Brace or other closing delimiter
       $depth--;
       if ($depth < 0) {
 	$ERROR = "Unmatched close brace at line $lineno";
@@ -123,14 +154,14 @@ sub compile {
       } else {
 	$cur_item .= $t;
       }
-    } elsif ($t eq '\\\\') {	# Precedes \\\..\\\{ or \\\..\\\}
+    } elsif (!$delim_pats && $t eq '\\\\') { # precedes \\\..\\\{ or \\\..\\\}
       $cur_item .= '\\';
-    } elsif ($t =~ /^\\([{}])$/) { # Escaped (literal) brace
-      $cur_item .= $1;
-    } elsif ($t eq "\n") {
+    } elsif (!$delim_pats && $t =~ /^\\([{}])$/) { # Escaped (literal) brace?
+	$cur_item .= $1;
+    } elsif ($t eq "\n") {	# Newline
       $lineno++;
       $cur_item .= $t;
-    } else {
+    } else {			# Anything else
       $cur_item .= $t;
     }
   }
@@ -151,13 +182,15 @@ sub compile {
 
 sub fill_in {
   my $fi_self = shift;
+  my %fi_a = @_;
 
   unless ($fi_self->{TYPE} eq 'PREPARSED') {
-    $fi_self->compile 
+    my $delims = _param('delimiters', %fi_a);
+    my @delim_arg = (defined $delims ? ($delims) : ());
+    $fi_self->compile(@delim_arg)
       or return undef;
   }
 
-  my %fi_a = @_;
   my $fi_varhash = _param('hash', %fi_a);
   my $fi_package = _param('package', %fi_a) ;
   my $fi_broken  = _param('broken', %fi_a)  || \&_default_broken;
@@ -323,7 +356,7 @@ sub _install_hash {
       no strict 'refs';
       local *SYM = *{"$ {dest}::$name"};
       if (! defined $val) {
-	*SYM = undef;
+	undef *{"$ {dest}::$name"};
       } elsif (ref $val) {
 	*SYM = $val;
       } else {
@@ -342,14 +375,22 @@ sub TTerror { $ERROR }
 
 Text::Template - Expand template text with embedded Perl
 
+=head1 VERSION
+
+This file documents C<Text::Template> version B<1.20>
+
 =head1 SYNOPSIS
 
  use Text::Template;
+
 
  $template = new Text::Template (TYPE => FILE,  SOURCE => 'filename.tmpl');
  $template = new Text::Template (TYPE => ARRAY, SOURCE => [ ... ] );
  $template = new Text::Template (TYPE => FILEHANDLE, SOURCE => $fh );
  $template = new Text::Template (TYPE => STRING, SOURCE => '...' );
+
+ # Use a different template file syntax:
+ $template = new Text::Template (DELIMITERS => [$open, $close], ...);
 
  $recipient = 'King';
  $text = $template->fill_in();  # Replaces `{$recipient}' with `King'
@@ -370,8 +411,13 @@ Text::Template - Expand template text with embedded Perl
  # Print result text instead of returning it
  $success = $template->fill_in(OUTPUT => \*FILEHANDLE, ...);
 
+ # Parse template with different template file syntax:
+ $text = $template->fill_in(DELIMITERS => [$open, $close], ...);
+
+ # Note that this is *faster* than using the default delimiters
+
  use Text::Template 'fill_in_string';
- $text = fill_in_string( <<EOM, 'package' => T, ...);
+ $text = fill_in_string( <<EOM, PACKAGE => 'T', ...);
  Dear {$recipient},
  Pay me at once.
         Love, 
@@ -380,6 +426,7 @@ Text::Template - Expand template text with embedded Perl
 
  use Text::Template 'fill_in_file';
  $text = fill_in_file($filename, ...);
+
 
 =head1 DESCRIPTION
 
@@ -474,7 +521,9 @@ a template like this:
 
 The backslash inside the string is passed through to Perl unchanged,
 so the C<\n> really does turn into a newline.  See the note at the end
-for details about the way backslashes work.
+for details about the way backslashes work.  Backslash processing is
+I<not> done when you specify alternative delimiters with the
+C<DELIMITERS> option.  (See L<"Alternative Delimiters">, below.)
 
 Each program fragment should be a sequence of Perl statements, which
 are evaluated the usual way.  The result of the last statement
@@ -621,6 +670,18 @@ The words C<TYPE> and C<SOURCE> can be spelled any of the following ways:
 
 Pick a style you like and stick with it.
 
+=over 4
+
+=item C<DELIMITERS>
+
+You may also add a C<DELIMITERS> option.  If this option is present,
+its value should be a reference to a list of two strings.  The first
+string is the string that signals the beginning of each program
+fragment, and the second string is the string that signals the end of
+each program fragment.  See L<"Alternative Delimiters">, below.
+
+=back
+
 =head2 C<compile>
 
 	$template->compile()
@@ -628,10 +689,14 @@ Pick a style you like and stick with it.
 Loads all the template text from the template's source, parses and
 compiles it.  If successful, returns true; otherwise returns false and
 sets C<$Text::Template::ERROR>.  If the template is already compiled,
-it returns true and does nothing.
+it returns true and does nothing.  
 
 You don't usually need to invoke this function, because C<fill_in>
 (see below) compiles the template if it isn't compiled already.
+
+If there is an argument to this function, it must be a reference to an
+array containing alternative delimiter strings.  See C<"Alternative
+Delimiters">, below.
 
 =head2 C<fill_in>
 
@@ -654,8 +719,8 @@ may yield spurious warnings about
 
 so you might like to avoid them and use the capitalized versions.
 
-At present, there are six legal options:  C<PACKAGE>, C<BROKEN>,
-C<BROKEN_ARG>, C<SAFE>, C<HASH>, and C<OUTPUT>.
+At present, there are seven legal options:  C<PACKAGE>, C<BROKEN>,
+C<BROKEN_ARG>, C<SAFE>, C<HASH>, C<OUTPUT>, and C<DELIMITERS>.
 
 =over 4
 
@@ -748,17 +813,17 @@ Suppose the key in the hash is I<key> and the value is I<value>.
 
 =over 4
 
-=item 
+=item *
 
 If the I<value> is C<undef>, then any variables named C<$key>,
 C<@key>, C<%key>, etc., are undefined.  
 
-=item
+=item *
 
 If the I<value> is a string or a number, then C<$key> is set to that
 value in the template.
 
-=item 
+=item *
 
 If the I<value> is a reference to an array, then C<@key> is set to
 that array.  If the I<value> is a reference to a hash, then C<%key> is
@@ -947,6 +1012,18 @@ If you use C<OUTPUT>, the return value from C<fill_in> is still true on
 success and false on failure, but the complete text is not returned to
 the caller.
 
+=item C<DELIMITERS>
+
+If this option is present, its value should be a reference to a list
+of two strings.  The first string is the string that signals the
+beginning of each program fragment, and the second string is the
+string that signals the end of each program fragment.  See
+L<"Alternative Delimiters">, below.  
+
+If you specify C<DELIMITERS> in the call to C<fill_in>, they override
+any delimiters you set when you created the template object with
+C<new>. 
+
 =back
 
 =head1 Convenience Functions
@@ -1122,6 +1199,52 @@ you can tamper with them deliberately for exciting effects; this is
 actually how C<$OUT> works.)  I can fix this, but it will make the
 package slower to do it, so I would prefer not to.
 
+=head2 Alternative Delimiters
+
+Lorenzo Valdettaro pointed out that if you are using C<Text::Template>
+to generate TeX output, the choice of braces as the program fragment
+delimiters makes you suffer suffer suffer.  Starting in version 1.20,
+you can change the choice of delimiters to something other than curly
+braces.
+
+In either the C<new()> call or the C<fill_in()> call, you can specify
+an alternative set of delimiters with the C<DELIMITERS> option.  For
+example, if you would like code fragments to be delimited by C<[@-->
+and C<--@]> instead of C<{> and C<}>, use
+
+	... DELIMITERS =E<gt> [ '[@--', '--@]' ], ...
+
+Note that these delimiters are I<literal strings>, not regexes.  (I
+tried for regexes, but it complicates the lexical analysis too much.)
+Note also that C<DELIMITERS> disables the special meaning of the
+backslash, so if you want to include the delimiters in the literal
+text of your template file, you are out of luck---it is up to you to
+choose delimiters that do not conflict with what you are doing.  The
+delimiter strings may still appear inside of program fragments as long
+as they nest properly.  This means that if sor sume reason you
+absolutely must have a program fragment that mentions one of the
+delimiters, like this:
+
+	[@--
+		print "Oh no, a delimiter: --@]\n"
+	--@]
+
+you may be able to make it work by doing this instead:
+
+	[@--
+		# Fake matching delimiter in a comment: [@--
+		print "Oh no, a delimiter: --@]\n"
+	--@]
+
+It may be safer to choose delimiters that begin with a newline
+character.  
+
+Because the parsing of templates is simplified by the absence of
+backslash escapes, using alternative C<DELIMITERS> I<speeds up> the
+parsing process by 20-25%.  This shows that my original choice of C<{>
+and C<}> was very bad.  I therefore recommend that you use alternative
+delimiters whenever possible. 
+
 =head2 JavaScript
 
 Jennifer D. St Clair asks:
@@ -1132,11 +1255,10 @@ Jennifer D. St Clair asks:
 Jennifer is worried about the braces in the JavaScript being taken as
 the delimiters of the Perl program fragments.  Of course, disaster
 will ensue when perl tries to evaluate these as if they were Perl
-programs.
-
-I didn't provide a facility for changing the braces to something else,
-because it complicates the parsing, and in my experience it isn't
-necessary.  There are two easy solutions:
+programs.  The best choice is to find some unambiguous delimiter
+strings that you can use in your template instead of curly braces, and
+then use the C<DELIMITERS> option.  However, if you can't do this for
+some reason, there are  two easy workarounds:
 
 1. You can put C<\> in front of C<{>, C<}>, or C<\> to remove its
 special meaning.  So, for example, instead of
@@ -1188,8 +1310,6 @@ and it'll come out as
 
 which is what you want.
 
-This trick is so easy that I thought didn't need to put in the feature
-that lets you change the bracket characters to something else.
 
 =head2 Shut Up!
 
@@ -1293,6 +1413,9 @@ use
 
 This passes C<"foo\}"> to Perl for evaluation.
 
+Starting with C<Text::Template> version 1.20, backslash processing is
+disabled if you use the C<DELIMITERS> option to specify alternative
+delimiter strings.
 
 =head2 A short note about C<$Text::Template::ERROR>
 
@@ -1401,6 +1524,7 @@ Michael J. Suzio /
 Dennis Taylor /
 James H. Thompson /
 Shad Todd /
+Lorenzo Valdettaro /
 Larry Virden /
 Andy Wardley /
 Matt Womer /

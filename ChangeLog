@@ -1,3 +1,20 @@
+Sun Mar  7 21:03:15 1999  Mark-Jason Dominus  <mjd@plover.com>
+
+	* Template.pm: Version 1.20:
+	
+	Added support for DELIMTER options: Check for it in ->new and
+ 		->fill_in Pass to ->compile if necessary.
+		
+	Added a new test file and documentation for this option.
+	
+	new function _acquire_data for turning template objects into
+ 	template-STRING objects.
+	
+	Fixed Jonathan Roy's bug about HASH options that contain undefined
+ 	values for variables.  He reported a warning.  This was
+ 	incidental: The `undef' wasn't actually working.  It works now and
+ 	also omits the spurious warning.  Added tests for this bug.
+
 Sun Feb 28 18:17:24 1999  Mark-Jason Dominus  <mjd@plover.com>
 
 	* Version 1.12:
