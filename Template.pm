@@ -8,7 +8,7 @@
 # same terms as Perl iteself.  
 # If in doubt, write to mjd-perl-template+@plover.com for a license.
 #
-# Version 1.41
+# Version 1.42
 
 package Text::Template;
 require 5.004;
@@ -18,7 +18,7 @@ use Exporter;
 use vars '$ERROR';
 use strict;
 
-$Text::Template::VERSION = '1.41';
+$Text::Template::VERSION = '1.42';
 my %GLOBAL_PREPEND = ('Text::Template' => '');
 
 sub Version {
@@ -65,12 +65,16 @@ sub always_prepend
       Carp::croak("Illegal value `$stype' for TYPE parameter");
     }
     my $self = {TYPE => $stype,
-		SOURCE => $source,
 		PREPEND => $prepend,
                 UNTAINT => $untaint,
                 BROKEN => $broken,
 		(defined $alt_delim ? (DELIM => $alt_delim) : ()),
 	       };
+    # Under 5.005_03, if any of $stype, $prepend, $untaint, or $broken
+    # are tainted, all the others become tainted too as a result of
+    # sharing the expression with them.  We install $source separately
+    # to prevent it from acquiring a spurious taint.
+    $self->{SOURCE} = $source;
 
     bless $self => $pack;
     #  $self->compile;
@@ -465,7 +469,7 @@ Text::Template - Expand template text with embedded Perl
 
 =head1 VERSION
 
-This file documents C<Text::Template> version B<1.41>
+This file documents C<Text::Template> version B<1.42>
 
 =head1 SYNOPSIS
 
@@ -684,7 +688,7 @@ into the last line.  The output will look something like this:
 	The Lord High Chamberlain has gotten 42
 	things for me this year.  
 
-	That is 35 more than he gave me last year.
+	That is 25 more than he gave me last year.
 
 That is all the syntax there is.  
 
@@ -823,8 +827,8 @@ C<UNTAINT =E<gt> 1> in the call to C<new>.  This will tell
 C<Text::Template> to disable taint checks on template code that has
 come from a file, as long as the filename itself is considered
 trustworthy.  It will also disable taint checks on template code that
-comes from a filehandle.  When used with C<TYPE => 'string'> or C<TYPE
-=> 'array'>, it has no effect.
+comes from a filehandle.  When used with C<TYPE =E<gt> 'string'> or C<TYPE
+=E<gt> 'array'>, it has no effect.
 
 See L<perlsec> for more complete information about tainting.
 
@@ -1645,7 +1649,7 @@ interpolated.  This is what is known as a `trick'.
 =head2 Compatibility
 
 Every effort has been made to make this module compatible with older
-versions.  The only known excepts follow:
+versions.  The only known exceptions follow:
 
 The output format of the default C<BROKEN> subroutine has changed
 twice, most recently between versions 1.31 and 1.40.
@@ -1765,7 +1769,7 @@ inside the template:
 =head2 Automatic preprocessing of program fragments
 
 It may be useful to preprocess the program fragments before they are
-evaluated.  See C<Text::Template::Preprocess> for more details.>
+evaluated.  See C<Text::Template::Preprocess> for more details.
 
 =head2 Author
 
@@ -1782,14 +1786,14 @@ For updates, visit C<http://www.plover.com/~mjd/perl/Template/>.
 
 =head2 Support?
 
-This software is version 1.41.  It may have bugs.  Suggestions and bug
+This software is version 1.42.  It may have bugs.  Suggestions and bug
 reports are always welcome.  Send them to
 C<mjd-perl-template+@plover.com>.  (That is my address, not the address
 of the mailing list.  The mailing list address is a secret.)
 
 =head1 LICENSE
 
-    Text::Template version 1.41
+    Text::Template version 1.42
     Copyright (C) 2001 Mark Jason Dominus
 
     This program is free software; you can redistribute it and/or
@@ -1825,6 +1829,7 @@ Tim Bunce /
 Juan E. Camacho /
 Itamar Almeida de Carvalho /
 Joseph Cheek /
+Gene Damon /
 San Deng /
 Bob Dougherty /
 Dan Franklin /
@@ -1839,10 +1844,12 @@ Daniel LaLiberte /
 Reuven M. Lerner /
 Trip Lilley / 
 Yannis Livassof /
+David Marshall /
 Joel Meulenberg /
 Jason Moore /
 Chris Nandor /
 Bek Oberin /
+Steve Palincsar /
 Ron Pero /
 Hans Persson /
 Jonathan Roy /
@@ -1862,6 +1869,7 @@ Shad Todd /
 Lorenzo Valdettaro /
 Larry Virden /
 Andy Wardley /
+Archie Warnock /
 Matt Womer /
 Andrew G Wood /
 Daini Xie /

@@ -1,5 +1,5 @@
 
-Text::Template v1.41
+Text::Template v1.42
 
 This is a library for generating form letters, building HTML pages, or
 filling in templates generally.  A `template' is a piece of text that
@@ -73,6 +73,16 @@ You can get the most recent version of Text::Template, news, comments,
 and other collateral information from
 <URL:http://www.plover.com/~mjd/perl/Template/>.
 
+----------------------------------------------------------------
+
+What's new in v1.42 since v1.41:
+
+This is a maintentance release.  There are no feature changes.
+
+        Fixed a bug relating to use of UNTAINT under perl 5.005_03 and
+        possibly other versions.
+
+        Taint-related tests are now more comprehensive.
 ----------------------------------------------------------------
 
 What's new in v1.41 since v1.40:

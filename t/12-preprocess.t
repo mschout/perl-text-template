@@ -6,11 +6,11 @@
 use lib '../blib/lib';
 use Text::Template::Preprocess;
 
-die "This is the test program for Text::Template::Preprocess version 1.41.
+die "This is the test program for Text::Template::Preprocess version 1.42.
 You are using version $Text::Template::Preprocess::VERSION instead.
 That does not make sense.\n
 Aborting"
-  unless $Text::Template::Preprocess::VERSION == 1.41;
+  unless $Text::Template::Preprocess::VERSION == 1.42;
 
 $TMPFILE = "tt$$";
 

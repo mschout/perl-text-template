@@ -11,11 +11,11 @@ print "1..30\n";
 
 $n=1;
 
-die "This is the test program for Text::Template version 1.41.
+die "This is the test program for Text::Template version 1.42.
 You are using version $Text::Template::VERSION instead.
 That does not make sense.\n
 Aborting"
-  unless $Text::Template::VERSION == 1.41;
+  unless $Text::Template::VERSION == 1.42;
 
 $template_1 = <<EOM;
 We will put value of \$v (which is "abc") here -> {\$v}
@@ -179,20 +179,20 @@ $n++;
 # (14-27) Make sure \ is working properly
 # Test added for version 1.11
 # This is a sort of general test.
-my @tests = ('{""}' => '',	# (16)
-	     '{"}"}' => undef,
+my @tests = ('{""}' => '',	# (14)
+	     '{"}"}' => undef,  # (15)
 	     '{"\\}"}' => '}',	# One backslash
 	     '{"\\\\}"}' => undef, # Two backslashes
-	     '{"\\\\\\}"}' => '}', # Three backslashes (20)
+	     '{"\\\\\\}"}' => '}', # Three backslashes
 	     '{"\\\\\\\\}"}' => undef, # Four backslashes
-	     '{"\\\\\\\\\\}"}' => '\}', # Five backslashes
+	     '{"\\\\\\\\\\}"}' => '\}', # Five backslashes  (20)
 	     '{"x20"}' => 'x20',
 	     '{"\\x20"}' => ' ',	# One backslash
-	     '{"\\\\x20"}' => '\\x20', # Two backslashes (25)
+	     '{"\\\\x20"}' => '\\x20', # Two backslashes
 	     '{"\\\\\\x20"}' => '\\ ', # Three backslashes
-	     '{"\\\\\\\\x20"}' => '\\\\x20', # Four backslashes
+	     '{"\\\\\\\\x20"}' => '\\\\x20', # Four backslashes  (25)
 	     '{"\\\\\\\\\\x20"}' => '\\\\ ', # Five backslashes
-	     '{"\\x20\\}"}' => ' }', # (29)
+	     '{"\\x20\\}"}' => ' }', # (27)
 	    );
 
 my $i;

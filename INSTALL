@@ -17,4 +17,15 @@ If it passes the tests, use
 
 to install it.
 
+Detailed documentation is at the bottom of the Template.pm file.  You
+may be able to view it with the following command:
+
+        perldoc Text::Template
+ 
+Or:
+
+        perldoc Template.pm
+
+If you have problems, send me mail:
+
 mjd-perl-template+@plover.com
