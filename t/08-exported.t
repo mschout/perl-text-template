@@ -6,11 +6,11 @@
 use lib '../blib/lib';
 use Text::Template 'fill_in_file', 'fill_in_string';
 
-die "This is the test program for Text::Template version 1.40.
+die "This is the test program for Text::Template version 1.41.
 You are using version $Text::Template::VERSION instead.
 That does not make sense.\n
 Aborting"
-  unless $Text::Template::VERSION == 1.40;
+  unless $Text::Template::VERSION == 1.41;
 
 print "1..6\n";
 
@@ -23,7 +23,7 @@ print +($out eq 'The value of $n is 119.' ? '' : 'not '), "ok $n\n";
 $n++;
 
 # (2) Test fill_in_file
-$TEMPFILE = "/tmp/tt$$";
+$TEMPFILE = "tt$$";
 open F, "> $TEMPFILE" or die "Couldn't open test file: $!; aborting";
 print F 'The value of $n is {$n}.', "\n";
 close F or die "Couldn't write test file: $!; aborting";

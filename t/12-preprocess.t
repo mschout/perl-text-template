@@ -6,13 +6,13 @@
 use lib '../blib/lib';
 use Text::Template::Preprocess;
 
-die "This is the test program for Text::Template version 1.40.
-You are using version $Text::Template::VERSION instead.
+die "This is the test program for Text::Template::Preprocess version 1.41.
+You are using version $Text::Template::Preprocess::VERSION instead.
 That does not make sense.\n
 Aborting"
-  unless $Text::Template::VERSION == 1.40;
+  unless $Text::Template::Preprocess::VERSION == 1.41;
 
-$TMPFILE = "/tmp/tt$$";
+$TMPFILE = "tt$$";
 
 print "1..8\n";
 my $n = 1;

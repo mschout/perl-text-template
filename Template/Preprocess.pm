@@ -2,7 +2,7 @@
 package Text::Template::Preprocess;
 use Text::Template;
 @ISA = qw(Text::Template);
-$Text::Template::Preprocess::VERSION = 1.40;
+$Text::Template::Preprocess::VERSION = 1.41;
 
 sub fill_in {
   my $self = shift;
@@ -34,7 +34,7 @@ Text::Template::Preprocess - Expand template text with embedded Perl
 
 =head1 VERSION
 
-This file documents C<Text::Template::Preprocess> version B<1.40>
+This file documents C<Text::Template::Preprocess> version B<1.41>
 
 =head1 SYNOPSIS
 
@@ -73,6 +73,33 @@ function without changing it.
 In all other respects, C<Text::Template::Preprocess> is identical to
 C<Text::Template>.
 
+=head1 WHY?
+
+One possible purpose:  If your files contain a lot of JavaScript, like
+this:
+
+
+        Plain text here...
+        { perl code }
+        <script language=JavaScript>
+     	      if (br== "n3") { 
+	  	  // etc.
+	      }
+        </script>
+        { more perl code }
+        More plain text...
+
+You don't want C<Text::Template> to confuse the curly braces in the
+JavaScript program with executable Perl code.  One strategy:
+
+        sub quote_scripts {
+          s(<script(.*?)</script>)(q{$1})gsi;
+        }
+
+Then use C<PREPROCESSOR =E<gt> \&quote_scripts>.  This will transform 
+
+
+
 =head1 SEE ALSO
 
 L<Text::Template>
@@ -93,7 +120,7 @@ For updates, visit C<http://www.plover.com/~mjd/perl/Template/>.
 
 =head1 LICENSE
 
-    Text::Template::Preprocess version 1.40
+    Text::Template::Preprocess version 1.41
     Copyright (C) 2001 Mark Jason Dominus
 
     This program is free software; you can redistribute it and/or
