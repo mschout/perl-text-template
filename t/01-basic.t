@@ -11,11 +11,11 @@ print "1..29\n";
 
 $n=1;
 
-die "This is the test program for Text::Template version 1.20.
+die "This is the test program for Text::Template version 1.23.
 You are using version $Text::Template::VERSION instead.
 That does not make sense.\n
 Aborting"
-  unless $Text::Template::VERSION == 1.20;
+  unless $Text::Template::VERSION == 1.23;
 
 $template_1 = <<EOM;
 We will put value of \$v (which is "abc") here -> {\$v}
@@ -24,7 +24,7 @@ EOM
 
 # (1) Construct temporary template file for testing
 # file operations
-$TEMPFILE = "/tmp/template$$";
+$TEMPFILE = "/tmp/tt$$";
 open(TMP, "> $TEMPFILE") or print "not ok $n\n" && &abort("Couldn\'t write tempfile $TEMPFILE: $!");
 print TMP $template_1;
 close TMP;

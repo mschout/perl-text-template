@@ -1,7 +1,7 @@
 use ExtUtils::MakeMaker;
 WriteMakefile(
 	      NAME => 'Text::Template',
-	      VERSION => '1.20',
+	      VERSION_FROM => 'Template.pm',
 #	      'linkext' => {LINKTYPE => ''},
 	      'dist' => {COMPRESS => 'gzip', SUFFIX => 'gz'},
 );

@@ -13,5 +13,6 @@ t/07-safe3.t
 t/08-exported.t
 t/09-error.t
 t/10-delimiters.t
+t/11-prepend.t
 ChangeLog
 

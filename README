@@ -1,5 +1,5 @@
 
-Text::Template v1.20
+Text::Template v1.23
 
 This is a library for generating form letters, building HTML pages, or
 filling in templates generally.  A `template' is a piece of text that
@@ -74,24 +74,40 @@ and other collateral information from
 <URL:http://www.plover.com/~mjd/perl/Template/>.
 
 ----------------------------------------------------------------
+What's new in v1.223since v1.22:
+
+	Small bug fix:  DELIMITER and other arguments were being
+	ignored in calls to fill_in_file and fill_this_in.  (Thanks to
+	Jonathan Roy.)
+
+----------------------------------------------------------------
+What's new in v1.22 since v1.20:
+
+	You can now specify that certain Perl statements be prepended
+	to the beginning of every program fragment in a template,
+	either per template, or for all templates, or for the duration
+	of only one call to fill_in.  This is useful, for example, if
+	you want to enable `strict' checks in your templates but you
+	don't want to manually add `use strict' to the front of every
+	program fragment everywhere.
+
+----------------------------------------------------------------
 What's new in v1.20 since v1.12:
 
 	You can now specify that the program fragment delimiters are
-	strings other than { and }.  This has two interesting effects:
-	First, it disables the special meaning of \, so you have to be
-	really, really sure that the delimiters will not appear in
-	your templates.  And second, because of the simplifications
-	introduced by the elimination of \ processing,  template
+	strings other than { and }.  This has three interesting
+	effects: First, it changes the delimiter strings.  Second, it
+	disables the special meaning of \, so you have to be really,
+	really sure that the delimiters will not appear in your
+	templates.  And third, because of the simplifications
+	introduced by the elimination of \ processing, template
 	parsing is 20-25% faster.
 
-	See the manual sections on `DELIMITERS' and `Alternative
-	Delimiters'. 
+	See the manual section on `Alternative Delimiters'.
 
 	Fixed bug having to do with undefined values in HASH options.
 	In particular, Text::Template no longer generates a warning if
 	you try to give a variable an undefined value.
-
-
 
 ----------------------------------------------------------------
 

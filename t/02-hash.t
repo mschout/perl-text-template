@@ -6,11 +6,11 @@
 use lib '../blib/lib';
 use Text::Template;
 
-die "This is the test program for Text::Template version 1.20.
+die "This is the test program for Text::Template version 1.23.
 You are using version $Text::Template::VERSION instead.
 That does not make sense.\n
 Aborting"
-  unless $Text::Template::VERSION == 1.20;
+  unless $Text::Template::VERSION == 1.23;
 
 
 print "1..12\n";
@@ -88,7 +88,11 @@ my $WARNINGS = 0;
   $n++;
   
   # (11) Was the output correct?
-  print +($text eq $result8 ? '' : 'not '), "ok $n\n";
+  if ($] < 5.005) {
+    print "ok $n # skipped -- not supported before 5.005\n";
+  } else {
+    print +($text eq $result8 ? '' : 'not '), "ok $n\n";
+  }
   $n++;
 }
 

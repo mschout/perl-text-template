@@ -6,9 +6,9 @@
 # Copyright 1996, 1997, 1999 M-J. Dominus.
 # You may copy and distribute this program under the
 # same terms as Perl iteself.  
-# If in doubt, write to mjd-perl-template@pobox.com for a license.
+# If in doubt, write to mjd-perl-template+@pobox.com for a license.
 #
-# Version 1.20
+# Version 1.23
 
 package Text::Template;
 require 5.004;
@@ -18,7 +18,8 @@ use Exporter;
 use vars '$ERROR';
 use strict;
 
-$Text::Template::VERSION = '1.20';
+$Text::Template::VERSION = '1.23';
+my %GLOBAL_PREPEND = ('Text::Template' => '');
 
 sub Version {
   $Text::Template::VERSION;
@@ -33,6 +34,14 @@ sub _param {
   return undef;
 }
 
+sub always_prepend
+{
+  my $pack = shift;
+  my $old = $GLOBAL_PREPEND{$pack};
+  $GLOBAL_PREPEND{$pack} = shift;
+  $old;
+}
+
 {
   my %LEGAL_TYPE;
   BEGIN { 
@@ -43,6 +52,7 @@ sub _param {
     my %a = @_;
     my $stype = uc(_param('type', %a)) || 'FILE';
     my $source = _param('source', %a);
+    my $prepend = _param('prepend', %a);
     my $alt_delim = _param('delimiters', %a);
     unless (defined $source) {
       require Carp;
@@ -54,6 +64,7 @@ sub _param {
     }
     my $self = {TYPE => $stype,
 		SOURCE => $source,
+		PREPEND => $prepend,
 		(defined $alt_delim ? (DELIM => $alt_delim) : ()),
 	       };
 
@@ -180,6 +191,19 @@ sub compile {
   1;
 }
 
+sub prepend_text {
+  my ($self) = @_;
+  my $t = $self->{PREPEND};
+  unless (defined $t) {
+    $t = $GLOBAL_PREPEND{ref $self};
+    unless (defined $t) {
+      $t = $GLOBAL_PREPEND{'Text::Template'};
+    }
+  }
+  $self->{PREPEND} = $_[1] if $#_ >= 1;
+  return $t;
+}
+
 sub fill_in {
   my $fi_self = shift;
   my %fi_a = @_;
@@ -198,6 +222,11 @@ sub fill_in {
   my $fi_safe = _param('safe', %fi_a);
   my $fi_ofh = _param('output', %fi_a);
   my $fi_eval_package;
+
+  my $fi_prepend = _param('prepend', %fi_a);
+  unless (defined $fi_prepend) {
+    $fi_prepend = $fi_self->prepend_text;
+  }
 
   if (defined $fi_safe) {
     $fi_eval_package = 'main';
@@ -240,7 +269,7 @@ sub fill_in {
       }
     } elsif ($fi_type eq 'PROG') {
       no strict;
-      my $fi_progtext = "package $fi_eval_package; $fi_text";
+      my $fi_progtext = "package $fi_eval_package; $fi_prepend;\n#line 1\n$fi_text";
       my $fi_res;
       my $fi_eval_err = '';
       if ($fi_safe) {
@@ -292,7 +321,7 @@ sub fill_in {
 sub fill_this_in {
   my $pack = shift;
   my $text = shift;
-  my $templ = $pack->new(TYPE => 'STRING', SOURCE => $text)
+  my $templ = $pack->new(TYPE => 'STRING', SOURCE => $text, @_)
     or return undef;
   $templ->compile or return undef;
   my $result = $templ->fill_in(@_);
@@ -305,7 +334,7 @@ sub fill_in_string {
 
 sub fill_in_file {
   my $fn = shift;
-  my $templ = Text::Template->new(TYPE => 'FILE', SOURCE => $fn)
+  my $templ = Text::Template->new(TYPE => 'FILE', SOURCE => $fn, @_)
     or return undef;
   $templ->compile or return undef;
   my $text = $templ->fill_in(@_);
@@ -356,11 +385,11 @@ sub _install_hash {
       no strict 'refs';
       local *SYM = *{"$ {dest}::$name"};
       if (! defined $val) {
-	undef *{"$ {dest}::$name"};
+	delete ${"$ {dest}::"}{$name};
       } elsif (ref $val) {
 	*SYM = $val;
       } else {
-	*SYM = \$val;
+ 	*SYM = \$val;
       }
     }
   }
@@ -377,7 +406,7 @@ Text::Template - Expand template text with embedded Perl
 
 =head1 VERSION
 
-This file documents C<Text::Template> version B<1.20>
+This file documents C<Text::Template> version B<1.23>
 
 =head1 SYNOPSIS
 
@@ -388,6 +417,7 @@ This file documents C<Text::Template> version B<1.20>
  $template = new Text::Template (TYPE => ARRAY, SOURCE => [ ... ] );
  $template = new Text::Template (TYPE => FILEHANDLE, SOURCE => $fh );
  $template = new Text::Template (TYPE => STRING, SOURCE => '...' );
+ $template = new Text::Template (PREPEND => q{use strict;}, ...);
 
  # Use a different template file syntax:
  $template = new Text::Template (DELIMITERS => [$open, $close], ...);
@@ -413,8 +443,10 @@ This file documents C<Text::Template> version B<1.20>
 
  # Parse template with different template file syntax:
  $text = $template->fill_in(DELIMITERS => [$open, $close], ...);
-
  # Note that this is *faster* than using the default delimiters
+
+ # Prepend specified perl code to each fragment before evaluating:
+ $text = $template->fill_in(PREPEND => q{use strict 'vars';}, ...);
 
  use Text::Template 'fill_in_string';
  $text = fill_in_string( <<EOM, PACKAGE => 'T', ...);
@@ -427,6 +459,8 @@ This file documents C<Text::Template> version B<1.20>
  use Text::Template 'fill_in_file';
  $text = fill_in_file($filename, ...);
 
+ # All templates will always have `use strict vars' attached to all fragments
+ Text::Template->always_prepend(q{use strict 'vars';});
 
 =head1 DESCRIPTION
 
@@ -436,7 +470,16 @@ has little Perl programs embedded in it here and there.  When you
 `fill in' a template, you evaluate the little programs and replace
 them with their values.  
 
-Here's an example of a template:
+You can store a template in a file outside your program.  People can
+modify the template without modifying the program.  You can separate
+the formatting details from the main code, and put the formatting
+parts of the program into the template.  That prevents code bloat and
+encourages functional separation.
+
+=head2 Example
+
+Here's an example of a template, which we'll suppose is stored in the
+file C<formletter.tmpl>:
 
 	Dear {$title} {$lastname},
 
@@ -465,13 +508,31 @@ something like this:
 
 			Mark "Vizopteryx" Dominus
 
-You can store a template in a file outside your program.  People can
-modify the template without modifying the program.  You can separate
-the formatting details from the main code, and put the formatting
-parts of the program into the template.  That prevents code bloat and
-encourages functional separation.
+Here is a complete program that transforms the example
+template into the example result, and prints it out:
 
-=head1 Template Syntax
+	use Text::Template;
+
+	my $template = new Text::Template (SOURCE => 'formletter.tmpl')
+	  or die "Couldn't construct template: $Text::Template::ERROR";
+
+	my @monthname = qw(January February March April May June
+                           July August September October November December);
+	my %vars = (title => 'Mr.',
+		    firstname => 'Bill',
+		    lastname => 'Gates',
+		    last_paid_month => 1,   # February
+		    amount => 392.12,
+		    monthname => \@monthname,
+		   );
+
+	my $result = $template->fill_in(HASH => \%vars);
+
+	if (defined $result) { print $result }
+	else { die "Couldn't fill in template: $Text::Template::ERROR" }
+
+
+=head2 Philosophy
 
 When people make a template module like this one, they almost always
 start by inventing a special syntax for substitutions.  For example,
@@ -619,7 +680,7 @@ that does not exist, C<$Text::Template::ERROR> will contain something like:
 This creates and returns a new template object.  C<new> returns
 C<undef> and sets C<$Text::Template::ERROR> if it can't create the
 template object.  C<SOURCE> says where the template source code will
-come from.  C<TYPE> says what kind of objec the source is.
+come from.  C<TYPE> says what kind of object the source is.
 
 The most common type of source is a file:
 
@@ -675,7 +736,7 @@ Pick a style you like and stick with it.
 =item C<DELIMITERS>
 
 You may also add a C<DELIMITERS> option.  If this option is present,
-its value should be a reference to a list of two strings.  The first
+its value should be a reference to an array of two strings.  The first
 string is the string that signals the beginning of each program
 fragment, and the second string is the string that signals the end of
 each program fragment.  See L<"Alternative Delimiters">, below.
@@ -752,7 +813,8 @@ Here's an example of using C<PACKAGE>:
 	for you since 1907:
 
 	{ foreach $item (@items) {
-	    $OUT .= " * \u$item\n";
+            $item_no++;
+	    $OUT .= " $item_no. \u$item\n";
 	  }
 	}
 
@@ -767,13 +829,14 @@ C<@items>.  Here's how to do that:
 	$template->fill_in();
 
 This is not very safe.  The reason this isn't as safe is that if you
-had a variable named C<$item> in scope in your program at the point
+had a variable named C<$item_no> in scope in your program at the point
 you called C<fill_in>, its value would be clobbered by the act of
 filling out the template.  The problem is the same as if you had
-written a subroutine that used those variables in the same waythat the
-template does.  (C<$OUT> is special in templates and is always safe.)
+written a subroutine that used those variables in the same way that
+the template does.  (C<$OUT> is special in templates and is always
+safe.)
 
-One solution to this is to make the C<$item> variable private to the
+One solution to this is to make the C<$item_no> variable private to the
 template by declaring it with C<my>.  If the template does this, you
 are safe.
 
@@ -783,8 +846,8 @@ if the template does I<not> declare its variables with C<my>:
 	@Q::items = ('ivory', 'apes', 'peacocks', );
 	$template->fill_in(PACKAGE => 'Q');
 
-In this case the template will clobber the variables C<$Q::item> and
-C<$Q::list>, which are not related to the ones your program was using.
+In this case the template will clobber the variable C<$Q::item_no>,
+which is not related to the one your program was using.
 
 Templates cannot affect variables in the main program that are
 declared with C<my>, unless you give the template references to those
@@ -911,8 +974,8 @@ If you specify a value for the C<BROKEN> attribute, it should be a
 reference to a function that C<fill_in> can call instead of the
 default function.
 
-C<fill_in> will pass an associative array to the C<broken> function.
-The associative array will have at least these three members:
+C<fill_in> will pass a hash to the C<broken> function.
+The hash will have at least these three members:
 
 =over 4
 
@@ -1012,6 +1075,12 @@ If you use C<OUTPUT>, the return value from C<fill_in> is still true on
 success and false on failure, but the complete text is not returned to
 the caller.
 
+=item C<PREPEND>
+
+You can have some Perl code prepended automatically to the beginning
+of every program fragment.  See L<C<PREPEND> feature and using
+C<strict> in templates> below.
+
 =item C<DELIMITERS>
 
 If this option is present, its value should be a reference to a list
@@ -1047,10 +1116,10 @@ An example:
 	$Q::amount = 141.61;
 	$Q::part = 'hyoid bone';
 
-	$text = Text::Template->fill_this_in( <<EOM, PACKAGE => Q);
-	Dear {\$name},
-	You owe me \${sprintf('%.2f', \$amount)}.  
-	Pay or I will break your {\$part}.
+	$text = Text::Template->fill_this_in( <<'EOM', PACKAGE => Q);
+	Dear {$name},
+	You owe me \\${sprintf('%.2f', $amount)}.  
+	Pay or I will break your {$part}.
 		Love,
 		Grand Vizopteryx of Irkutsk.
 	EOM
@@ -1073,7 +1142,7 @@ four years ago and it is too late to change it.
 C<fill_in_string> is exactly like C<fill_this_in> except that it is
 not a method and you can omit the C<Text::Template-E<gt>> and just say
 
-	print fill_in_string(<<EOM, ...);
+	print fill_in_string(<<'EOM', ...);
 	Dear {$name},
 	  ...
 	EOM
@@ -1157,10 +1226,17 @@ scope in which they're declared.  The template is not part of that
 scope, so the template can't see C<$recipient>.  
 
 If that's not the behavior you want, don't use C<my>.  C<my> means a
-proivate variable, and in this case you don't want the variable to be
+private variable, and in this case you don't want the variable to be
 private.  Put the variables into package variables in some other
-package, and use the C<PACKAGE> option to C<fill_in>, or pass the
-names and values in a hash with the C<HASH> option.
+package, and use the C<PACKAGE> option to C<fill_in>:
+
+	$Q::recipient = $recipient;
+	my $text = fill_in_file('formletter.tmpl', PACKAGE => 'Q');
+	
+
+or pass the names and values in a hash with the C<HASH> option:
+
+	my $text = fill_in_file('formletter.tmpl', HASH => { recipient => $recipient });
 
 =head2 Security Matters
 
@@ -1197,7 +1273,8 @@ variables all have names that begin with C<$fi_>, so if you stay away
 from those names you'll be safe.  (Of course, if you're a real wizard
 you can tamper with them deliberately for exciting effects; this is
 actually how C<$OUT> works.)  I can fix this, but it will make the
-package slower to do it, so I would prefer not to.
+package slower to do it, so I would prefer not to.  If you are worried
+about this, send me mail and I will show you what to do about it.
 
 =head2 Alternative Delimiters
 
@@ -1221,7 +1298,7 @@ backslash, so if you want to include the delimiters in the literal
 text of your template file, you are out of luck---it is up to you to
 choose delimiters that do not conflict with what you are doing.  The
 delimiter strings may still appear inside of program fragments as long
-as they nest properly.  This means that if sor sume reason you
+as they nest properly.  This means that if for some reason you
 absolutely must have a program fragment that mentions one of the
 delimiters, like this:
 
@@ -1244,6 +1321,119 @@ backslash escapes, using alternative C<DELIMITERS> I<speeds up> the
 parsing process by 20-25%.  This shows that my original choice of C<{>
 and C<}> was very bad.  I therefore recommend that you use alternative
 delimiters whenever possible. 
+
+=head2 C<PREPEND> feature and using C<strict> in templates
+
+Suppose you would like to use C<strict> in your templates to detect
+undeclared variables and the like.  But each code fragment is a
+separate lexical scope, so you have to turn on C<strict> at the top of
+each and every code fragment:
+
+	{ use strict;
+	  use vars '$foo';
+	  $foo = 14;
+	  ...
+	}
+
+	...
+
+	{ # we forgot to put `use strict' here
+	  my $result = $boo + 12;    # $boo is misspelled and should be $foo
+	  # No error is raised on `$boo'
+	}
+
+Because we didn't put C<use strict> at the top of the second fragment,
+it was only active in the first fragment, and we didn't get any
+C<strict> checking in the second fragment.  Then we mispelled C<$foo>
+and the error wasn't caught.  
+
+C<Text::Template> version 1.22 and higher has a new feature to make
+this easier.  You can specify that any text at all be automatically
+added to the beginning of each program fragment.  
+
+When you make a call to C<fill_in>, you can specify a
+
+	PREPEND => 'some perl statements here'
+
+option; the statements will be prepended to each program fragment for
+that one call only.  Suppose that the C<fill_in> call included a
+
+	PREPEND => 'use strict;'
+
+option, and that the template looked like this:
+
+	{ use vars '$foo';
+	  $foo = 14;
+	  ...
+	}
+
+	...
+
+	{ my $result = $boo + 12;    # $boo is misspelled and should be $foo
+	  ...
+	}
+
+The code in the second fragment would fail, because C<$boo> has not
+been declared.  C<use strict> was implied, even though you did not
+write it explicitly, because the C<PREPEND> option added it for you
+automatically.
+
+There are two other ways to do this.  At the time you create the
+template object with C<new>, you can also supply a C<PREPEND> option,
+in which case the statements will be prepended each time you fill in
+that template.  If the C<fill_in> call has its own C<PREPEND> option,
+this overrides the one specified at the time you created the
+template.  Finally, you can make the class method call
+
+	Text::Template->always_prepend('perl statements');
+
+If you do this, then call calls to C<fill_in> for I<any> template will
+attach the perl statements to the beginning of each program fragment,
+except where overridden by C<PREPEND> options to C<new> or C<fill_in>.
+
+=head2 Prepending in Derived Classes
+
+This section is technical, and you should skip it on the first few
+readings. 
+
+Normally there are three places that prepended text could come from.
+It could come from the C<PREPEND> option in the C<fill_in> call, from
+the C<PREPEND> option in the C<new> call that created the template
+object, or from the argument of the C<always_prepend> call.
+C<Text::Template> looks for these three things in order and takes the
+first one that it finds.
+
+In a subclass of C<Text::Template>, this last possibility is
+ambiguous.  Suppose C<S> is a subclass of C<Text::Template>.  Should 
+
+	Text::Template->always_prepend(...);
+
+affect objects in class C<Derived>?  The answer is that you can have it
+either way.  
+
+The C<always_prepend> value for C<Text::Template> is normally stored
+in  a hash variable named C<%GLOBAL_PREPEND> under the key
+C<Text::Template>.  When C<Text::Template> looks to see what text to
+prepend, it first looks in the template object itself, and if not, it
+looks in C<$GLOBAL_PREPEND{I<class>}> where I<class> is the class to
+which the template object belongs.  If it doesn't find any value, it
+looks in C<$GLOBAL_PREPEND{'Text::Template'}>.  This means that
+objects in class C<Derived> I<will> be affected by
+
+	Text::Template->always_prepend(...);
+
+I<unless> there is also a call to
+
+	Derived->always_prepend(...);
+
+So when you're designing your derived class, you can arrange to have
+your objects ignore C<Text::Template::always_prepend> calls by simply
+putting C<Derived-E<gt>always_prepend('')> at the top of your module.
+
+Of course, there is also a final escape hatch: Templates support a
+C<prepend_text> that is used to look up the appropriate text to be
+prepended at C<fill_in> time.  Your derived class can override this
+method to get an arbitrary effect.
 
 =head2 JavaScript
 
@@ -1337,7 +1527,15 @@ To prevent the 17 from appearing in the output is very simple:
 	}
 
 Now the last expression evaluated yields the empty string, which is
-invisible.
+invisible.  If you don't like the way this looks, use
+
+	{ ...
+	  $var = 17;
+	  ($SILENTLY);
+	}
+
+instead.  Presumably, C<$SILENTLY> has no value, so nothing will be
+interpolated.  This is what is known as a `trick'.
 
 =head2 Compatibility
 
@@ -1468,6 +1666,7 @@ inside the template:
 
 Mark-Jason Dominus, Plover Systems
 
+Please send questions and other remarks about this software to
 C<mjd-perl-template@pobox.com>
 
 You can join a very low-volume (E<lt>10 messages per year) mailing
@@ -1490,6 +1689,7 @@ Many thanks to the following people for offering support,
 encouragement, advice, and all the other good stuff.  
 
 Klaus Arnhold /
+Chris.Brezil /
 Mike Brodhead /
 Tom Brown /
 Tim Bunce /
@@ -1574,4 +1774,3 @@ use it as if it were a regular variable.
 There are not quite enough tests in the test suite.
 
 =cut
-

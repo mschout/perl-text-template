@@ -6,18 +6,18 @@
 use lib '../blib/lib';
 use Text::Template;
 
-die "This is the test program for Text::Template version 1.20.
+die "This is the test program for Text::Template version 1.23.
 You are using version $Text::Template::VERSION instead.
 That does not make sense.\n
 Aborting"
-  unless $Text::Template::VERSION == 1.20;
+  unless $Text::Template::VERSION == 1.23;
 
 print "1..2\n";
 
 $n=1;
 
 $template = new Text::Template TYPE => STRING, SOURCE => q{My process ID is {$$}};
-$of = "/tmp/template.$$";
+$of = "/tmp/t$$";
 END { unlink $of }
 open O, "> $of" or die;
 
