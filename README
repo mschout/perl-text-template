@@ -1,5 +1,5 @@
 
-Text::Template v1.43
+Text::Template v1.44
 
 This is a library for generating form letters, building HTML pages, or
 filling in templates generally.  A `template' is a piece of text that
@@ -72,6 +72,21 @@ is no address for sending messages to the list.
 You can get the most recent version of Text::Template, news, comments,
 and other collateral information from
 <URL:http://www.plover.com/~mjd/perl/Template/>.
+
+----------------------------------------------------------------
+What's new in v1.44 since v1.43: 
+
+This is a maintentance release.  There are no feature changes.
+
+        _scrubpkg, which was responsible for eptying out temporary
+        packages after the module had done with them, wasn't always
+        working; the result was memory-leaks in long-running
+        applications.  This should be fixed now, and there is a test
+        in the test suite for it.
+
+        Minor changes to the test suite to prevent spurious errors.
+
+        Minor documentation changes.
 
 ----------------------------------------------------------------
 What's new in v1.43 since v1.42:

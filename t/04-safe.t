@@ -13,11 +13,11 @@ BEGIN {
   }
 }
 
-die "This is the test program for Text::Template version 1.43.
+die "This is the test program for Text::Template version 1.44.
 You are using version $Text::Template::VERSION instead.
 That does not make sense.\n
 Aborting"
-  unless $Text::Template::VERSION == 1.43;
+  unless $Text::Template::VERSION == 1.44;
 
 print "1..16\n";
 
@@ -120,6 +120,8 @@ print +($text1 eq $badnosafeoutput ? '' : 'not '), "ok $n\n";
 $n++;
 
 # (14) text2 should yield badsafeoutput
+$text2 =~ s/'kill'/kill/;  # 5.8.1 added quote marks around the op name
+print "# expected: <$badsafeoutput>\n# got     : <$text2>\n";
 print +($text2 eq $badsafeoutput ? '' : 'not '), "ok $n\n";
 $n++;
 

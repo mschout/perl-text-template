@@ -1,20 +1,14 @@
 #!perl
 #
-# test apparatus for Text::Template module
-# still incomplete.
+# Tests of basic, essential functionality
+#
 
 use Text::Template;
 $X::v = $Y::v = 0;		# Suppress `var used only once'
 
-print "1..30\n";
+print "1..31\n";
 
 $n=1;
-
-die "This is the test program for Text::Template version 1.43.
-You are using version $Text::Template::VERSION instead.
-That does not make sense.\n
-Aborting"
-  unless $Text::Template::VERSION == 1.43;
 
 $template_1 = <<EOM;
 We will put value of \$v (which is "abc") here -> {\$v}
@@ -248,7 +242,15 @@ if (open (TMPL, "< $TEMPFILE")) {
   print "not ok $n\n";  $n++;
 }
 
-
+# (31) Test _scrubpkg for leakiness
+$Text::Template::GEN0::test = 1;
+Text::Template::_scrubpkg('Text::Template::GEN0');
+if ($Text::Template::GEN0::test) {
+  print "not ok $n\n";
+} else {
+  print "ok $n\n";
+}
+$n++;
 
 
 END {unlink $TEMPFILE;}

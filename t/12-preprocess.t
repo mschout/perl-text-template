@@ -5,11 +5,11 @@
 
 use Text::Template::Preprocess;
 
-die "This is the test program for Text::Template::Preprocess version 1.43.
+die "This is the test program for Text::Template::Preprocess version 1.44.
 You are using version $Text::Template::Preprocess::VERSION instead.
 That does not make sense.\n
 Aborting"
-  unless $Text::Template::Preprocess::VERSION == 1.43;
+  unless $Text::Template::Preprocess::VERSION == 1.44;
 
 $TMPFILE = "tt$$";
 

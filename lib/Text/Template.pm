@@ -3,12 +3,12 @@
 #
 # Fill in `templates'
 #
-# Copyright 1996, 1997, 1999, 2001, 2002 M-J. Dominus.
+# Copyright 1996, 1997, 1999, 2001, 2002, 2003 M-J. Dominus.
 # You may copy and distribute this program under the
 # same terms as Perl iteself.  
 # If in doubt, write to mjd-perl-template+@plover.com for a license.
 #
-# Version 1.43
+# Version 1.44
 
 package Text::Template;
 require 5.004;
@@ -18,7 +18,7 @@ use Exporter;
 use vars '$ERROR';
 use strict;
 
-$Text::Template::VERSION = '1.43';
+$Text::Template::VERSION = '1.44';
 my %GLOBAL_PREPEND = ('Text::Template' => '');
 
 sub Version {
@@ -422,12 +422,12 @@ sub _unconditionally_untaint {
   }
   sub _scrubpkg {
     my $s = shift;
+    $s =~ s/^Text::Template:://;
     no strict 'refs';
     my $hash = $Text::Template::{$s."::"};
-    foreach my $key (%$hash) {
-      delete $hash->{$key};
+    foreach my $key (keys %$hash) {
+      undef $hash->{$key};
     }
-    delete $Text::Template::{$s."::"};
   }
 }
   
@@ -469,17 +469,17 @@ Text::Template - Expand template text with embedded Perl
 
 =head1 VERSION
 
-This file documents C<Text::Template> version B<1.43>
+This file documents C<Text::Template> version B<1.44>
 
 =head1 SYNOPSIS
 
  use Text::Template;
 
 
- $template = Text::Template->new(TYPE => FILE,  SOURCE => 'filename.tmpl');
- $template = Text::Template->new(TYPE => ARRAY, SOURCE => [ ... ] );
- $template = Text::Template->new(TYPE => FILEHANDLE, SOURCE => $fh );
- $template = Text::Template->new(TYPE => STRING, SOURCE => '...' );
+ $template = Text::Template->new(TYPE => 'FILE',  SOURCE => 'filename.tmpl');
+ $template = Text::Template->new(TYPE => 'ARRAY', SOURCE => [ ... ] );
+ $template = Text::Template->new(TYPE => 'FILEHANDLE', SOURCE => $fh );
+ $template = Text::Template->new(TYPE => 'STRING', SOURCE => '...' );
  $template = Text::Template->new(PREPEND => q{use strict;}, ...);
 
  # Use a different template file syntax:
@@ -968,11 +968,20 @@ The value for C<HASH> should be a reference to a hash that maps
 variable names to values.  For example, 
 
 	$template->fill_in(HASH => { recipient => "The King",
-				     items => ['gold', 'frankincense', 'myrrh']
+				     items => ['gold', 'frankincense', 'myrrh'],
+	                             object => \$self,
 				   });
 
 will fill out the template and use C<"The King"> as the value of
-C<$recipient> and the list of items as the value of C<@items>.
+C<$recipient> and the list of items as the value of C<@items>.  Note
+that we pass an array reference, but inside the template it appears as
+an array.  In general, anything other than a simple string or number
+should be passed by reference.
+
+We also want to pass an object, which is in C<$self>; note that we
+pass a reference to the object, C<\$self> instead.  Since we've passed
+a reference to a scalar, inside the template the object appears as
+C<$object>.  
 
 The full details of how it works are a little involved, so you might
 want to skip to the next section.
@@ -993,6 +1002,8 @@ value in the template.
 
 =item *
 
+For anything else, you must pass a reference.
+
 If the I<value> is a reference to an array, then C<@key> is set to
 that array.  If the I<value> is a reference to a hash, then C<%key> is
 set to that hash.  Similarly if I<value> is any other kind of
@@ -1007,6 +1018,18 @@ and
 have almost exactly the same effect.  (The difference is that in the
 former case, the value is copied, and in the latter case it is
 aliased.)  
+
+=item *
+
+In particular, if you want the template to get an object or any kind,
+you must pass a reference to it:
+
+	$template->fill_in(HASH => { database_handle => \$dbh, ... });
+
+If you do this, the template will have a variable C<$database_handle>
+which is the database handle object.  If you leave out the C<\>, the
+template will have a hash C<%database_handle>, which exposes the
+internal structure of the database handle object; you don't want that.
 
 =back
 
@@ -1786,15 +1809,15 @@ For updates, visit C<http://www.plover.com/~mjd/perl/Template/>.
 
 =head2 Support?
 
-This software is version 1.43.  It may have bugs.  Suggestions and bug
+This software is version 1.44.  It may have bugs.  Suggestions and bug
 reports are always welcome.  Send them to
 C<mjd-perl-template+@plover.com>.  (That is my address, not the address
 of the mailing list.  The mailing list address is a secret.)
 
 =head1 LICENSE
 
-    Text::Template version 1.43
-    Copyright (C) 2001 Mark Jason Dominus
+    Text::Template version 1.44
+    Copyright (C) 2003 Mark Jason Dominus
 
     This program is free software; you can redistribute it and/or
     modify it under the terms of the GNU General Public License as
@@ -1821,10 +1844,12 @@ encouragement, advice, bug reports, and all the other good stuff.
 David H. Adler /
 Joel Appelbaum /
 Klaus Arnhold /
+AntE<oacute>nio AragE<atilde>o /
 Kevin Atteson /
 Chris.Brezil /
 Mike Brodhead /
 Tom Brown /
+Dr. Frank Bucolo /
 Tim Bunce /
 Juan E. Camacho /
 Itamar Almeida de Carvalho /
@@ -1838,39 +1863,50 @@ gary at dls.net /
 Todd A. Green /
 Donald L. Greer Jr. /
 Michelangelo Grigni /
+Zac Hansen /
 Tom Henry /
+Jarko Hietaniemi /
 Matt X. Hunter /
 Robert M. Ioffe /
 Daniel LaLiberte /
 Reuven M. Lerner /
 Trip Lilley / 
 Yannis Livassof /
+Val Luck /
+Kevin Madsen /
 David Marshall /
+James Mastros /
 Joel Meulenberg /
 Jason Moore /
+Sergey Myasnikov /
 Chris Nandor /
 Bek Oberin /
 Steve Palincsar /
 Ron Pero /
 Hans Persson /
+Sean Roehnelt /
 Jonathan Roy /
 Shabbir J. Safdar /
 Jennifer D. St Clair /
 Uwe Schneider /
 Randal L. Schwartz /
 Michael G Schwern /
+Yonat Sharon /
 Brian C. Shensky /
 Niklas Skoglund /
 Tom Snee /
+Fred Steinberg /
 Hans Stoop /
 Michael J. Suzio /
 Dennis Taylor /
 James H. Thompson /
 Shad Todd /
+Lieven Tomme /
 Lorenzo Valdettaro /
 Larry Virden /
 Andy Wardley /
 Archie Warnock /
+Chris Wesley /
 Matt Womer /
 Andrew G Wood /
 Daini Xie /

@@ -6,6 +6,7 @@ INSTALL
 README
 lib/Text/Template.pm
 lib/Text/Template/Preprocess.pm
+t/00-version.t
 t/01-basic.t
 t/02-hash.t
 t/03-out.t

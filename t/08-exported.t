@@ -5,11 +5,11 @@
 
 use Text::Template 'fill_in_file', 'fill_in_string';
 
-die "This is the test program for Text::Template version 1.43.
+die "This is the test program for Text::Template version 1.44.
 You are using version $Text::Template::VERSION instead.
 That does not make sense.\n
 Aborting"
-  unless $Text::Template::VERSION == 1.43;
+  unless $Text::Template::VERSION == 1.44;
 
 print "1..6\n";
 
