@@ -9,19 +9,60 @@ previous versions passed.
 
 New features:
 
-* Better argument syntax
+*     At least twice as fast 
 
-* At least twice as fast
+*     Better support for filling out the same template more than once 
 
-* Better support for filling out the same template more than once
+*     Now supports evaluation of program fragments in Safe
+      compartments. (Thanks, Jonathan!)  
 
-* More convenience functions
+*     Better argument syntax 
 
-In particular, the parser is much better and simpler, and once a
-template is parsed, the parsed version is stored so that it needn't be
-parsed again.
+*     More convenience functions 
+
+*     The parser is much better and simpler. 
+
+*     Once a template is parsed, the parsed version is stored so that
+      it needn't be parsed again.  
+
+*     BROKEN function behavior is rationalized. You can now pass an
+      arbitrary argument to your BROKEN function, or return a value
+      from it to the main program.  
+
+*     Documentation overhauled. 
 
 Questions or comments should be addressed to mjd-perl-template@plover.com.
 
+To receive occasional announcements of new versions of T::T, send an
+empty note to mjd-perl-template-request@plover.com.  (This is not a
+discussion list; it is for announcements only.)
+
 You can get the most recent version, new, comments, and other
 collateral information from <URL:http://www.plover.com/~mjd/perl/Template/>.
+
+----------------------------------------------------------------
+
+What's new in v1.03:
+
+	Code added to support HASH option to fill_in.
+	(Incl. `_gensym' function.)
+	
+	Documentation for HASH.
+	
+	New test file for HASH.
+	
+	Note about failure of lexical variables to propagate into
+ 	templates.  Why does this surprise people?
+	
+	Bug fix: program fragments are evaluated in an environment with
+ 	`no strict' by default.  Otherwise, you get a lot of `Global
+ 	symbol "$v" requires explicit package name' failures.  Why didn't
+ 	the test program pick this up?  Because the only variable the test
+ 	program ever used was `$a', which is exempt.  Duhhhhh.
+	
+	Fixed the test program.
+	
+	Various minor documentation fixes.
+
+
+

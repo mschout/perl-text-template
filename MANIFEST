@@ -3,3 +3,6 @@ Makefile.PL
 README
 Template.pm
 t/template1.t
+t/hash.t
+ChangeLog
+

@@ -1,17 +1,18 @@
-#!perl -w
+#!perl
 #
 # test apparatus for Text::Template module
 # still incomplete.
 
 use lib '../blib/lib';
 use Text::Template;
+$X::v = $Y::v = 0;		# Suppress `var used only once'
 
 print "1..13\n";
 
 $n=1;
 
 $template_1 = <<EOM;
-We will put value of \$a (which is "abc") here -> {\$a}
+We will put value of \$v (which is "abc") here -> {\$v}
 We will evaluate 1+1 here -> {1 + 1}
 EOM
 
@@ -33,14 +34,14 @@ if (defined($template)) {
 $n++;
 
 # (3) Fill in template from file
-$X::a = "abc";	
+$X::v = "abc";	
 $resultX = <<EOM;
-We will put value of \$a (which is "abc") here -> abc
+We will put value of \$v (which is "abc") here -> abc
 We will evaluate 1+1 here -> 2
 EOM
-$Y::a = "ABC";	
+$Y::v = "ABC";	
 $resultY = <<EOM;
-We will put value of \$a (which is "abc") here -> ABC
+We will put value of \$v (which is "abc") here -> ABC
 We will evaluate 1+1 here -> 2
 EOM
 
@@ -112,7 +113,7 @@ if (open (TMPL, "< $TEMPFILE")) {
 $template = new Text::Template 
     ('type' => 'ARRAY', 
      'source' => [ 
-		  'We will put value of $a (which is "abc") here -> {$a}',
+		  'We will put value of $v (which is "abc") here -> {$v}',
 		  "\n",
 		  'We will evaluate 1+1 here -> {1+1}',
 		  "\n",
@@ -189,6 +190,7 @@ if ($text =~ /$result/s) {
 $n++;
 
 unlink $TEMPFILE;
+
 exit;
 
 

@@ -8,7 +8,7 @@
 # same terms as Perl iteself.  
 # If in doubt, write to mjd-perl-template@pobox.com for a license.
 #
-# Version 1.0 
+# Version 1.03
 
 package Text::Template;
 use Exporter;
@@ -16,8 +16,7 @@ use Exporter;
 use vars '$ERROR';
 use strict;
 
-
-$Text::Template::VERSION = '1.0';
+$Text::Template::VERSION = '1.03';
 
 sub Version {
   $Text::Template::VERSION;
@@ -144,10 +143,38 @@ sub fill_in {
   }
 
   my %fi_a = @_;
-  my $fi_package = _param('package', %fi_a) || caller();
+  my $fi_varhash = _param('hash', %fi_a);
+  my $fi_package = _param('package', %fi_a) ;
   my $fi_broken  = _param('broken', %fi_a)  || \&_default_broken;
   my $fi_broken_arg = _param('broken_arg', %fi_a) || [];
   my $fi_safe = _param('safe', %fi_a);
+
+  if ($fi_varhash) {
+    unless (defined $fi_package) {
+      $fi_package = _gensym();
+    }
+    if (ref $fi_varhash eq 'HASH') {
+      $fi_varhash = [$fi_varhash];
+    }
+    my $varhash;
+    foreach $varhash (@$fi_varhash) {
+      my $name;
+      foreach $name (keys %$varhash) {
+	my $val = $varhash->{$name};
+	no strict 'refs';
+	local *SYM = *{"$ {fi_package}::$name"};
+	if (! defined $val) {
+	  *SYM = undef;
+	} elsif (ref $val) {
+	  *SYM = $val;
+	} else {
+	  *SYM = \$val;
+	}
+      }
+    }
+  } else {
+    $fi_package = caller unless defined $fi_package;
+  }
 
   my $fi_r = '';
   my $fi_item;
@@ -156,6 +183,7 @@ sub fill_in {
     if ($fi_type eq 'TEXT') {
       $fi_r .= $fi_text;
     } elsif ($fi_type eq 'PROG') {
+      no strict;
       my $fi_progtext = "package $fi_package; $fi_text";
       my $fi_res;
       if ($fi_safe) {
@@ -227,6 +255,13 @@ sub _load_text {
   <F>;
 }
 
+{
+  my $seqno = 0;
+  sub _gensym {
+    __PACKAGE__ . '::GEN' . $seqno++;
+  }
+}
+  
 sub TTerror { $ERROR }
 
 1;
@@ -555,6 +590,86 @@ Templates cannot affect variables in the main program that are
 declared with C<my>, unless you give the template references to those
 variables.
 
+=item C<HASH>
+
+You may not want to put the template variables into a package.
+Packages can be hard to manage:  You can't copy them, for example.
+C<HASH> provides an alternative.  
+
+The value for C<HASH> should be a reference to a hash that maps
+variable names to values.  For example, 
+
+	$template->fill_in(HASH => { recipient => "The King",
+				     items => ['gold', 'frankincense', 'myrrh']
+				   });
+
+will fill out the template and use C<"The King"> as the value of
+C<$recipient> and the list of items as the value of C<@items>.
+
+The full details of how it works are a little involved, so you might
+want to skip to the next section.
+
+Suppose the key in the hash is I<key> and the value is I<value>.  
+
+=over 4
+
+=item 
+
+If the I<value> is C<undef>, then any variables named C<$key>,
+C<@key>, C<%KEY>, etc., are undefined.  
+
+=item
+
+If the I<value> is a string or a number, then C<$key> is set to that
+value in the template.
+
+=item 
+
+If the I<value> is a reference to an array, then C<@key> is set to
+that array.  If the I<value> is a reference to a hash, then C<%key> is
+set to that hash.  Similarly if I<value> is any other kind of
+reference.  This means that
+
+	var => "foo"
+
+and
+
+	var => \"foo"
+
+have almost exactly the same effect.  (The difference is that in the
+former case, the value is copied, and in the latter case it is
+aliased.)  
+
+=back
+
+Normally, the way this works is by allocating a private package,
+loading all the variables into the package, and then filling out the
+template as if you had specified that package.  A new package is
+allocated each time.  However, if you I<also> use the C<PACKAGE>
+option, C<Text::Template> loads the variables into the package you
+specified, and they stay there after the call returns.  Subsequent
+calls to C<fill_in> that use the same package will pick up the values
+you loaded in.
+
+If the argument of C<HASH> is a reference to an array instead of a
+reference to a hash, then the array should contain a list of hashes
+whose contents are loaded into the template package one after the
+other.  You can use this feature if you want to combine several sets
+of variables.  For example, one set of variables might be the defaults
+for a fill-in form, and the second set might be the user inputs, which
+override the defaults when they are present:
+
+	$template->fill_in(HASH => [\%defaults, \%user_input]);
+
+You can also use this to set two variables with the same name:
+
+	$template->fill_in(HASH => [{ v => "The King" },
+                                    { v => [1,2,3] },
+	                           ]
+                          );
+
+This sets C<$v> to C<"The King"> and C<@v> to C<(1,2,3)>.	
+
 =item C<BROKEN>
 
 If any of the program fragments fails to compile or aborts for any
@@ -774,6 +889,24 @@ You can do the same importing trick if this is too much to type.
 
 =head1 Miscellaneous
 
+=head2 C<my> variables
+
+People are frequently surprised when this doesn't work:
+
+	my $recipient = 'The King';
+	my $text = fill_in_file('formletter.tmpl');
+
+The text C<The King> doesn't get into the form letter.  Why not?
+Because C<$recipient> is a C<my> variable, and the whole point of
+C<my> variables is that they're private and inaccessible except in the
+scope in which they're declared.  The template is not part of that
+scope, so the template can't see them.  
+
+If that's not what you want, don't use C<my>.  Put the variables into
+package variables in some other package, and use the C<PACKAGE> option
+to C<fill_in>, or pass the names and values in a hash with the C<HASH>
+option.
+
 =head2 Security Matters
 
 All variables are evaluated in the package you specify with the
@@ -782,8 +915,8 @@ templates don't do anything egregiously stupid, you won't have to
 worry that evaluation of the little programs will creep out into the
 rest of your program and wreck something.
 
-Nevertheless, there's really no way to protect against a template that
-says
+Nevertheless, there's really no way (except with C<Safe>) to protect
+against a template that says
 
 	{ $Important::Secret::Security::Enable = 0; 
 	  # Disable security checks in this program 
@@ -801,6 +934,12 @@ or even
 
 so B<don't> go filling in templates unless you're sure you know what's in
 them.  If you're worried, use the C<SAFE> option.
+
+As a final warning, program fragments run a small risk of accidentally
+clobbering local variables in the C<fill_in> function itself.  These
+variables all have names that begin with C<$fi_>, so if you stay away
+from those names you'll be safe.  (Of course, if you're a real wizard
+you can tamper with them deliberately for exciting effects.)
 
 =head2 JavaScript
 
@@ -960,7 +1099,7 @@ Klaus Arnhold /
 Mike Brodhead /
 Tom Brown /
 Tim Bunce /
-Juan Camacho /
+Juan E. Camacho /
 Joseph Cheek /
 San Deng /
 Bob Dougherty /
@@ -1001,13 +1140,16 @@ C<my> variables in C<fill_in> are still susceptible to being clobbered
 by template evaluation.  They all begin with C<fi_>, so avoid those
 names in your templates.
 
-Maybe there should be a utility method for emptying out a package?
+Maybe there should be a utility method for emptying out a package?Or
+for pre-loading a package from a hash?
 
-Maybe there should be a control item for doing #if.  Perl's `if' is
-sufficient, but a little cumbersome to handle the quoting.
+Maybe there should be a control item for doing C<#if>.  Perl's `if' is
+sufficient, but a little cumbersome to handle the quoting.  Ranjit and
+I brainstormed a wonderful general solution to this which may be
+forthcoming.
 
 The line number information will be wrong if the template's lines are
-not terminated by "\n".  Someone should let me know if this is a
+not terminated by C<"\n">.  Someone should let me know if this is a
 problem.
 
 There are not enough tests in the test suite.

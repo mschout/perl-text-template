@@ -1,0 +1,24 @@
+Fri Feb  5 23:11:12 1999  Mark-Jason Dominus  <mjd@plover.com>
+
+	* Template.pm: Version 1.03.
+	
+	Code added to support HASH option to fill_in.
+	(Incl. `_gensym' function.)
+	
+	Documentation for HASH.
+	
+	New test file for HASH.
+	
+	Note about failure of lexical variables to propagate into
+ 	templates.  Why does this surprise people?
+	
+	Bug fix: program fragments are evaluated in an environment with
+ 	`no strict' by default.  Otherwise, you get a lot of `Global
+ 	symbol "$v" requires explicit package name' failures.  Why didn't
+ 	the test program pick this up?  Because the only variable the test
+ 	program ever used was `$a', which is exempt.  Duhhhhh.
+	
+	Fixed the test program.
+	
+	Various minor documentation fixes.
+
