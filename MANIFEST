@@ -1,5 +1,6 @@
 MANIFEST
 Makefile.PL
+INSTALL
 README
 Template.pm
 t/01-basic.t

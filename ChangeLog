@@ -1,3 +1,14 @@
+Thu Feb 25 11:32:14 1999  Mark-Jason Dominus  <mjd@plover.com>
+
+	*  Version 1.11:
+
+	Template.pm: Changes to tokenizer and lexer to support new
+ 	backslash behavior.
+	
+	Documentation for same.
+	
+	Other misc. documentation fixes.
+
 Sat Feb 13 14:34:03 1999  Mark-Jason Dominus  <mjd@plover.com>
 
 	* Version 1.10:

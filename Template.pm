@@ -8,7 +8,7 @@
 # same terms as Perl iteself.  
 # If in doubt, write to mjd-perl-template@pobox.com for a license.
 #
-# Version 1.10
+# Version 1.11
 
 package Text::Template;
 require 5.004;
@@ -17,7 +17,7 @@ use Exporter;
 use vars '$ERROR';
 use strict;
 
-$Text::Template::VERSION = '1.10';
+$Text::Template::VERSION = '1.11';
 
 sub Version {
   $Text::Template::VERSION;
@@ -80,7 +80,7 @@ sub compile {
     die "Can only compile $pack objects of subtype STRING, but this is $self->{TYPE}; aborting";
   }
 
-  my @tokens = split /([{}\n]|\\.)/, $self->{SOURCE};
+  my @tokens = split /(\\\\(?=\\*[{}])|\\[{}]|[{}\n])/, $self->{SOURCE};
   my $state = 'TEXT';
   my $depth = 0;
   my $lineno = 1;
@@ -112,7 +112,9 @@ sub compile {
       } else {
 	$cur_item .= $t;
       }
-    } elsif ($t =~ /^\\(.)/) {
+    } elsif ($t eq '\\\\') {	# Precedes \\\..\\\{ or \\\..\\\}
+      $cur_item .= '\\';
+    } elsif ($t =~ /^\\([{}])$/) { # Escaped (literal) brace
       $cur_item .= $1;
     } elsif ($t eq "\n") {
       $lineno++;
@@ -442,8 +444,9 @@ close brace C<}>.  When the template is filled in, the program
 fragments are evaluated, and each one is replaced with the resulting
 value to yield the text that is returned.
 
-A backslash C<\> in front of a brace (or another backslash) escapes
-its special meaning.    The result of filling out this template:
+A backslash C<\> in front of a brace (or another backslash that is in
+front of a brace) escapes its special meaning.  The result of filling
+out this template:
 
 	\{ The sum of 1 and 2 is {1+2}  \}
 
@@ -452,7 +455,15 @@ is
 	{ The sum of 1 and 2 is 3  }
 
 If you have an unmatched brace, C<Text::Template> will return a
-failure code and a warning about where the problem is.
+failure code and a warning about where the problem is.  Backslashes
+that do not precede a brace are passed through unchanged.  If you have
+a template like this:
+
+	{ "String that ends in a newline.\n" }
+
+The backslash inside the string is passed through to Perl unchanged,
+so the C<\n> really does turn into a newline.  See the note at the end
+for details about the way backslashes work.
 
 Each program fragment should be a sequence of Perl statements, which
 are evaluated the usual way.  The result of the last statement
@@ -463,7 +474,7 @@ place of the program fragment itself.
 The fragments are evaluated in order, and side effects from earlier
 fragments will persist into later fragments:
 
-	{$x = @things; ''} The Lord High Chamberlain has gotten {$x}
+	{$x = @things; ''}The Lord High Chamberlain has gotten {$x}
 	things for me this year.  
 	{ $diff = $x - 17; 
 	  $more = 'more'
@@ -472,6 +483,7 @@ fragments will persist into later fragments:
 	  } elsif ($diff < 0) {
 	    $more = 'fewer';
 	  } 
+          '';
 	} 
 	That is {$diff} {$more} than he gave me last year.
 
@@ -480,7 +492,7 @@ fragment that begins on the third line, and the values of C<$diff> and
 C<$more> set in the second fragment will persist and be interpolated
 into the last line.  The output will look something like this:
 
-	 The Lord High Chamberlain has gotten 42
+	The Lord High Chamberlain has gotten 42
 	things for me this year.  
 
 	That is 35 more than he gave me last year.
@@ -499,6 +511,7 @@ list with a header, like this:
 	  * Apes
 	  * Peacocks
 	  * ...
+
 One way to do it is with a template like this:
 
 	Here is a list of the things I have got for you since 1907:
@@ -526,7 +539,7 @@ This means that you can write the template above like this:
         } 
 
 C<$OUT> is reinitialized to the empty string at the start of each
-program fragment.  It is private to C<Text::Template>, so that means
+program fragment.  It is private to C<Text::Template>, so 
 you can't use a variable named C<$OUT> in your template without
 invoking the special behavior.
 
@@ -541,15 +554,14 @@ that does not exist, C<$Text::Template::ERROR> will contain something like:
 
 =head2 C<new>
 
-	$template = new Text::Template ( attribute => value, ... );
+	$template = new Text::Template ( TYPE => ..., SOURCE => ... );
 
-This creates and returns a new template object.  You specify the
-source of the template with a set of attribute-value pairs in the
-arguments.  It returns C<undef> and sets C<$Text::Template::ERROR> if
-it can't create the template object.
+This creates and returns a new template object.  C<new> returns
+C<undef> and sets C<$Text::Template::ERROR> if it can't create the
+template object.  C<SOURCE> says where the template source code will
+come from.  C<TYPE> says what kind of objec the source is.
 
-The C<TYPE> attribute says what kind of thing the source is.  Most common is 
-a filename:
+The most common type of source is a file:
 
 	new Text::Template ( TYPE => 'FILE', SOURCE => $filename );
 
@@ -577,7 +589,12 @@ The C<TYPE> can be FILEHANDLE, in which case the source should be an
 open filehandle (such as you got from the C<FileHandle> or C<IO::*>
 packages, or a glob, or a reference to a glob).  In this case
 C<Text::Template> will read the text from the filehandle up to
-end-of-file, and that text is the template.
+end-of-file, and that text is the template:
+
+	# Read template source code from STDIN:
+	new Text::Template ( TYPE => 'FILEHANDLE', 
+                             SOURCE => \*STDIN  );
+
 
 If you omit the C<TYPE> attribute, it's taken to be C<FILE>.
 C<SOURCE> is required.  If you omit it, the program will abort.
@@ -614,8 +631,8 @@ Otherwise, returns C<undef>  and sets C<$Text::Template::ERROR>.
 
 The I<OPTIONS> are a hash, or a list of key-value pairs.  You can
 write the key names in any of the six usual styles as above; this
-means that where this manual says C<PACKAGE> you can actually use any
-of 
+means that where this manual says C<PACKAGE> (for example) you can
+actually use any of
 
 	PACKAGE Package package -PACKAGE -Package -package
 
@@ -674,15 +691,15 @@ C<@items>.  Here's how to do that:
 	$template->fill_in();
 
 This is not very safe.  The reason this isn't as safe is that if you
-had any variables named C<$list> or C<$item> in scope in your program
-at the point you called C<fill_in>, their values would be clobbered by
-the act of filling out the template.  The problem is the same as if
-you had written a subroutine that used those variables in the same
-waythat the template does.
+had a variable named C<$item> in scope in your program at the point
+you called C<fill_in>, its value would be clobbered by the act of
+filling out the template.  The problem is the same as if you had
+written a subroutine that used those variables in the same waythat the
+template does.  (C<$OUT> is special in templates and is always safe.)
 
-One solution to this is to make the C<$item> and C<$list> variables
-private to the template by declaring them with C<my>.  If the template
-does this, you are safe.  
+One solution to this is to make the C<$item> variable private to the
+template by declaring it with C<my>.  If the template does this, you
+are safe.
 
 But if you use the C<PACKAGE> option, you will probably be safe even
 if the template does I<not> declare its variables with C<my>:
@@ -723,7 +740,7 @@ Suppose the key in the hash is I<key> and the value is I<value>.
 =item 
 
 If the I<value> is C<undef>, then any variables named C<$key>,
-C<@key>, C<%KEY>, etc., are undefined.  
+C<@key>, C<%key>, etc., are undefined.  
 
 =item
 
@@ -780,20 +797,23 @@ This sets C<$v> to C<"The King"> and C<@v> to C<(1,2,3)>.
 =item C<BROKEN>
 
 If any of the program fragments fails to compile or aborts for any
-reason, C<Text::Template> will call the C<BROKEN> function that you
-supply with the C<BROKEN> attribute.  The function will tell
-C<Text::Template> what to do next.  The value for this attribute is a
-reference to your C<BROKEN> function.  
+reason, and you have set the C<BROKEN> option to a function reference,
+C<Text::Template> will invoke the function.  This function is called
+the I<C<BROKEN> function>.  The C<BROKEN> function will tell
+C<Text::Template> what to do next.  
 
 If the C<BROKEN> function returns C<undef>, C<Text::Template> will
 immediately abort processing the template and return the text that it
 has accumulated so far.  If your function does this, it should set a
 flag that you can examine after C<fill_in> returns so that you can
-tell whether there was a premature return or not.
+tell whether there was a premature return or not. 
 
 If the C<BROKEN> function returns any other value, that value will be
 interpolated into the template as if that value had been the return
-value of the program fragment to begin with.
+value of the program fragment to begin with.  For example, if the
+C<BROKEN> function returns an error string, the error string will be
+interpolated into the output of the template in place of the program
+fragment that cased the error.
 
 If you don't specify a C<BROKEN> function, C<Text::Template> supplies
 a default one that returns something like
@@ -816,7 +836,7 @@ reference to a function that C<fill_in> can call instead of the
 default function.
 
 C<fill_in> will pass an associative array to the C<broken> function.
-The associative array will have at least these four members:
+The associative array will have at least these three members:
 
 =over 4
 
@@ -871,7 +891,7 @@ If one of the program fragments in the template fails, it will call
 the C<BROKEN> function, C<my_broken>, and pass it the C<BROKEN_ARG>,
 which is a reference to C<$error>.  C<my_broken> can store an error
 message into C<$error> this way.  Then the function that called
-C<fill_in> can see if C<my_broken> has left an error message for ity
+C<fill_in> can see if C<my_broken> has left an error message for it
 to find, and proceed accordingly.
 
 =item C<SAFE>
@@ -941,7 +961,7 @@ An example:
 
 	$text = Text::Template->fill_this_in( <<EOM, PACKAGE => Q);
 	Dear {\$name},
-	You owe me {sprintf('%.2f', \$amount)}.  
+	You owe me \${sprintf('%.2f', \$amount)}.  
 	Pay or I will break your {\$part}.
 		Love,
 		Grand Vizopteryx of Irkutsk.
@@ -950,9 +970,10 @@ An example:
 Notice how we included the template in-line in the program by using a
 `here document' with the C<E<lt>E<lt>> notation.
 
-C<fill_this_in> is probably obsolete.  It is only here for backwards
-compatibility.  You should use C<fill_in_string> instead.  It is
-described in the next section.
+C<fill_this_in> is a deprecated feature.  It is only here for
+backwards compatibility, and may be removed in some far-future version
+in C<Text::Template>.  You should use C<fill_in_string> instead.  It
+is described in the next section.
 
 =head2 C<fill_in_string>
 
@@ -969,7 +990,7 @@ not a method and you can omit the C<Text::Template-E<gt>> and just say
 	  ...
 	EOM
 
-To us C<fill_in_string>, you need to say
+To use C<fill_in_string>, you need to say
 
 	use Text::Template 'fill_in_string';
 
@@ -999,7 +1020,7 @@ Perl already has an include function.  If you want it, you can just put
 
 	{qx{cat filename}}
 
-into your template.  Voila.
+into your template.  VoilE<agrave>.
 
 If you don't want to use C<cat>, you can write a little four-line
 function that opens a file and dumps out its contents, and call it
@@ -1019,7 +1040,10 @@ package C<Q> can say
 
 	{include(filename)}
 
-to insert the text from the named file at that point.
+to insert the text from the named file at that point.  If you are
+using the C<HASH> option instead, just put C<include =E<gt>
+\&Text::Template::_load_text> into the hash instead of importing it
+explicitly.
 
 Suppose you don't want to insert a plain text file, but rather you
 want to include one template within another?  Just use C<fill_in_file>
@@ -1042,12 +1066,13 @@ The text C<The King> doesn't get into the form letter.  Why not?
 Because C<$recipient> is a C<my> variable, and the whole point of
 C<my> variables is that they're private and inaccessible except in the
 scope in which they're declared.  The template is not part of that
-scope, so the template can't see them.  
+scope, so the template can't see C<$recipient>.  
 
-If that's not what you want, don't use C<my>.  Put the variables into
-package variables in some other package, and use the C<PACKAGE> option
-to C<fill_in>, or pass the names and values in a hash with the C<HASH>
-option.
+If that's not the behavior you want, don't use C<my>.  C<my> means a
+proivate variable, and in this case you don't want the variable to be
+private.  Put the variables into package variables in some other
+package, and use the C<PACKAGE> option to C<fill_in>, or pass the
+names and values in a hash with the C<HASH> option.
 
 =head2 Security Matters
 
@@ -1066,7 +1091,7 @@ against a template that says
 
 or
 
-	{ $/ = "hoho";   # Sabotage future uses of <FH>.
+	{ $/ = "ho ho ho";   # Sabotage future uses of <FH>.
 	  # $/ is always a global variable
 	}
 
@@ -1074,14 +1099,17 @@ or even
 
 	{ system("rm -rf /") }
 
-so B<don't> go filling in templates unless you're sure you know what's in
-them.  If you're worried, use the C<SAFE> option.
+so B<don't> go filling in templates unless you're sure you know what's
+in them.  If you're worried, or you can't trust the person who wrote
+the template, use the C<SAFE> option.
 
-As a final warning, program fragments run a small risk of accidentally
+A final warning: program fragments run a small risk of accidentally
 clobbering local variables in the C<fill_in> function itself.  These
 variables all have names that begin with C<$fi_>, so if you stay away
 from those names you'll be safe.  (Of course, if you're a real wizard
-you can tamper with them deliberately for exciting effects.)
+you can tamper with them deliberately for exciting effects; this is
+actually how C<$OUT> works.)  I can fix this, but it will make the
+package slower to do it, so I would prefer not to.
 
 =head2 JavaScript
 
@@ -1092,7 +1120,7 @@ Jennifer D. St Clair asks:
 
 Jennifer is worried about the braces in the JavaScript being taken as
 the delimiters of the Perl program fragments.  Of course, disaster
-will ensure when perl tries to evaluate these as if they were Perl
+will ensue when perl tries to evaluate these as if they were Perl
 programs.
 
 I didn't provide a facility for changing the braces to something else,
@@ -1133,7 +1161,7 @@ it would turn into
 
 	    foo
 
-So for your JavaScdript, just write
+So for your JavaScript, just write
 
 	    {q{
 	      if (br== "n3") { 
@@ -1166,7 +1194,10 @@ that they didn't want to have there.
 
 Remember that a program fragment is replaced with its own return
 value, and that in Perl the return value of a code block is the value
-of the last expression that was evaluated, which in this case is 17.  
+of the last expression that was evaluated, which in this case is 17.
+If it didn't do that, you wouldn't be able to write C<{$recipient}>
+and have the recipient filled in.
+
 To prevent the 17 from appearing in the output is very simple:
 
 	{ ...
@@ -1180,19 +1211,77 @@ invisible.
 =head2 Compatibility
 
 Every effort has been made to make this module compatible with older
-versions.  There are two exceptions.  One is the output format of the
-default C<BROKEN> subroutine; I decided that the old format was too
-verbose.  If this bothers you, it's easy to supply a custom subroutine
-that yields the old behavior.  The other difference is that the
+versions.  There are three exceptions.  One is the output format of
+the default C<BROKEN> subroutine; I decided that the old format was
+too verbose.  If this bothers you, it's easy to supply a custom
+subroutine that yields the old behavior.  The second is that the
 C<$OUT> feature arrogates the C<$OUT> variable for itself.  If you had
 templates that happened to use a variable named C<$OUT>, you will have
 to change them to use some other variable or all sorts of strangeness
 may result.
 
+The third incompatibility is with the behavior of the \ metacharacter.
+In 0.1b, \\ was special everywhere, and the template processor always
+replaced it with a single backslash before passing the code to Perl
+for evaluation.  The rule now is more complicated but probably more
+convenient.  See the section on backslash processing, below, for a
+full discussion.
+
 With a minor change to fix the format of the default C<BROKEN>
 subroutine, this version passes the test suite from the old version.
-(It is in <t/01-basic.t>.) The old test suite was too small, but it's
+(It is in C<t/01-basic.t>.) The old test suite was too small, but it's
 a little reassuring.
+
+=head2 Backslash Processing
+
+In C<Text::Template> beta versions, the backslash was special whenever
+it appeared before a brace or another backslash.  That meant that
+while C<{"\n"}> did indeed generate a newline, C<{"\\"}> did not
+generate a backslash, because the code passed to Perl for evaluation
+was C<"\"> which is a syntax error.  If you wanted a backslash, you
+would have had to write C<{"\\\\"}>.
+
+In C<Text::Template> versions 1.0 through 1.10, there was a bug:
+Backslash was special everywhere.  In these versions, C<{"\n"}>
+generated the letter C<n>.  
+
+The bug has been corrected in version 1.11, but I did not go back to
+exactly the old rule, because I did not like the idea of having to
+write C<{"\\\\"}> to get one backslash.  The rule is now more
+complicated to remember, but probably easier to use.  The rule is now:
+Backslashes are always passed to Perl unchanged I<unless> they occur
+as part of a sequence like C<\\\...\\\{> or C<\\\...\\\}>.  In these
+contexts, they are special; C<\\> is replaced with C<\>, and C<\{> and
+C<\}> signal a literal brace. 
+
+Examples:
+
+	\{ foo \}
+
+is I<not> evaluated, because the C<\> before the rbaces signals that
+they should be taken literally.  The result in the output looks like this: 
+
+	{ foo }
+
+
+This is a syntax error:
+
+	{ "foo}" }
+
+because C<Text::Template> things that the code ends at the first C<}>,
+and then gets upset when it sees the second one.  TO make this work
+correctly, use
+
+	{ "foo\}" }
+
+This passes C<"foo}"> to Perl for evaluation.  Note there's no C<\> in
+the evaluated code.  If you really want a C<\> in the evaluated code,
+use
+
+	{ "foo\\\}" }
+
+This passes C<"foo\}"> to Perl for evaluation.
+
 
 =head2 A short note about C<$Text::Template::ERROR>
 
@@ -1256,9 +1345,10 @@ For updates, visit C<http://www.plover.com/~mjd/perl/Template/>.
 =head2 Support?
 
 This software is version 1.0.  It is a complete rewrite of an older
-package, and may have bugs.  It is inadequately tested.  Suggestions
-and bug reports are always welcome.  Send them to
-C<mjd-perl-template@plover.com>.
+package, and may have bugs.  Suggestions and bug reports are always
+welcome.  Send them to C<mjd-perl-template@plover.com>.  (That is my
+address, not the address of the mailing list.  The mailing list
+address is a secret.)
 
 =head2 Thanks
 

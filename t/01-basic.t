@@ -7,15 +7,15 @@ use lib '../blib/lib', './blib/lib';
 use Text::Template;
 $X::v = $Y::v = 0;		# Suppress `var used only once'
 
-print "1..13\n";
+print "1..29\n";
 
 $n=1;
 
-die "This is the test program for Text::Template version 1.10.
+die "This is the test program for Text::Template version 1.11.
 You are using version $Text::Template::VERSION instead.
 That does not make sense.\n
 Aborting"
-  unless $Text::Template::VERSION == 1.10;
+  unless $Text::Template::VERSION == 1.11;
 
 $template_1 = <<EOM;
 We will put value of \$v (which is "abc") here -> {\$v}
@@ -194,6 +194,67 @@ if ($text =~ /$result/s) {
   print STDERR "---\n$text\n---\n";
 }
 $n++;
+
+
+# (14) Make sure \ is working properly
+# Test added for version 1.11
+my $tmpl = Text::Template->new(TYPE => 'STRING',
+			       SOURCE => 'B{"\\}"}C{"\\{"}D',
+			       );
+# This should fail if the \ are not interpreted properly.
+my $text = $tmpl->fill_in();
+print +($text eq "B}C{D" ? '' : 'not '), "ok $n\n";
+$n++;
+
+# (15) Make sure \ is working properly
+# Test added for version 1.11
+$tmpl = Text::Template->new(TYPE => 'STRING',
+			    SOURCE => qq{A{"\t"}B},
+			   );
+# Symptom of old problem:  ALL \ were special in templates, so
+# The lexer would return (A, PROGTEXT("t"), B), and the
+# result text would be AtB instead of A(tab)B.
+$text = $tmpl->fill_in();
+
+print +($text eq "A\tB" ? '' : 'not '), "ok $n\n";
+$n++;
+
+# (16-29) Make sure \ is working properly
+# Test added for version 1.11
+# This is a sort of general test.
+my @tests = ('{""}' => '',	# (16)
+	     '{"}"}' => undef,
+	     '{"\\}"}' => '}',	# One backslash
+	     '{"\\\\}"}' => undef, # Two backslashes
+	     '{"\\\\\\}"}' => '}', # Three backslashes (20)
+	     '{"\\\\\\\\}"}' => undef, # Four backslashes
+	     '{"\\\\\\\\\\}"}' => '\}', # Five backslashes
+	     '{"x20"}' => 'x20',
+	     '{"\\x20"}' => ' ',	# One backslash
+	     '{"\\\\x20"}' => '\\x20', # Two backslashes (25)
+	     '{"\\\\\\x20"}' => '\\ ', # Three backslashes
+	     '{"\\\\\\\\x20"}' => '\\\\x20', # Four backslashes
+	     '{"\\\\\\\\\\x20"}' => '\\\\ ', # Five backslashes
+	     '{"\\x20\\}"}' => ' }', # (29)
+	    );
+
+my $i;
+for ($i=0; $i<@tests; $i+=2) {
+  my $tmpl = Text::Template->new(TYPE => 'STRING',
+				 SOURCE => $tests[$i],
+				);
+  my $text = $tmpl->fill_in;
+  my $result = $tests[$i+1];
+  my $ok = (! defined $text && ! defined $result
+	    || $text eq $result);
+  unless ($ok) {
+    print STDERR "($n) expected .$result., got .$text.\n";
+  }
+  print +($ok ? '' : 'not '), "ok $n\n";
+  $n++;
+}
+
+
 
 unlink $TEMPFILE;
 

@@ -14,11 +14,11 @@ BEGIN {
   }
 }
 
-die "This is the test program for Text::Template version 1.10.
+die "This is the test program for Text::Template version 1.11.
 You are using version $Text::Template::VERSION instead.
 That does not make sense.\n
 Aborting"
-  unless $Text::Template::VERSION == 1.10;
+  unless $Text::Template::VERSION == 1.11;
 
 print "1..1\n";
 
