@@ -6,11 +6,11 @@
 use lib '../blib/lib';
 use Text::Template;
 
-die "This is the test program for Text::Template version 1.31.
+die "This is the test program for Text::Template version 1.40.
 You are using version $Text::Template::VERSION instead.
 That does not make sense.\n
 Aborting"
-  unless $Text::Template::VERSION == 1.31;
+  unless $Text::Template::VERSION == 1.40;
 
 print "1..18\n";
 $n = 1;

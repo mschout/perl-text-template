@@ -14,11 +14,11 @@ BEGIN {
   }
 }
 
-die "This is the test program for Text::Template version 1.31.
+die "This is the test program for Text::Template version 1.40.
 You are using version $Text::Template::VERSION instead.
 That does not make sense.\n
 Aborting"
-  unless $Text::Template::VERSION == 1.31;
+  unless $Text::Template::VERSION == 1.40;
 
 print "1..16\n";
 
@@ -82,7 +82,7 @@ $n++;
 
 $badtemplate     = qq{This should fail: { $BADOP; 'NOFAIL' }};
 $badnosafeoutput = q{This should fail: NOFAIL};
-$badsafeoutput   = q{This should fail: Program fragment at line 1 delivered error ``kill trapped by operation mask''};
+$badsafeoutput   = q{This should fail: Program fragment delivered error ``kill trapped by operation mask at template line 1.''};
 
 $template1 = new Text::Template ('type' => 'STRING', 'source' => $badtemplate)
   or die;

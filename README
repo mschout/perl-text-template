@@ -1,5 +1,5 @@
 
-Text::Template v1.31
+Text::Template v1.40
 
 This is a library for generating form letters, building HTML pages, or
 filling in templates generally.  A `template' is a piece of text that
@@ -42,10 +42,10 @@ the formatting details from the main code, and put the formatting
 parts of the program into the template.  That prevents code bloat and
 encourages functional separation.
 
-You can fill in the template in a `Safe' compartment.  This means tat
+You can fill in the template in a `Safe' compartment.  This means that
 if you don't trust the person who wrote the code in the template, you
 won't have to worry that they are tampering with your program when you
-execute it.
+execute it.  
 
 ----------------------------------------------------------------
 
@@ -61,7 +61,7 @@ merely cosmetic change, the current version of Text::Template passes
 the test suite that the old beta versions passed.
 
 Questions or comments should be addressed to
-mjd-perl-template@plover.com.  This address goes directly to me, and
+mjd-perl-template+@plover.com.  This address goes directly to me, and
 not to anyone else; it is not a mailing list address.
 
 To receive occasional announcements of new versions of T::T, send an
@@ -72,6 +72,55 @@ is no address for sending messages to the list.
 You can get the most recent version of Text::Template, news, comments,
 and other collateral information from
 <URL:http://www.plover.com/~mjd/perl/Template/>.
+
+----------------------------------------------------------------
+What's new in v1.40 since v1.31:
+
+        New UNTAINT option tells the module that it is safe to 'eval'
+        code even though it has come from a file or filehandle.
+
+        Code added to prevent memory leaks when filling many
+        templates.  Thanks to Itamar Almeida de Carvalho.
+
+        Bug fix:  $OUT was not correctly initialized when used in
+        conjunction with SAFE.
+
+        You may now use a glob ref when passing a filehandle to the
+        ->new funcion.  Formerly, a glob was reuqired.
+
+        New subclass:  Text::Template::Preprocess.  Just like
+        Text::Template, but you may supply a PREPROCESS option in the
+        constructor or the fill_in call; this is a function which
+        receives each code fragment prior to evaluation, and which may
+        modify and return the fragment; the modified fragment is what
+        is evaluated.
+
+        Error messages passed to BROKEN subroutines will now report
+        the correct line number of the template at which the error
+        occurred:
+
+                Illegal division by zero at template line 37.
+
+        If the template comes from a file, the filename will be
+        reported as well:
+
+                Illegal division by zero at catalog.tmpl line 37.
+
+
+        INCOMPATIBLE CHANGE:
+
+        The format of the default error message has changed.  It used
+        to look like:
+
+                Program fragment at line 30 delivered error ``Illegal division by zero''
+
+        It now looks like:
+
+                Program fragment delivered error ``Illegal division by zero at catalog.tmpl line 37''
+
+        Note that the default message used to report the line number
+        at which the program fragment began; it now reports the line
+        number at which the error actually occurred.
 
 ----------------------------------------------------------------
 What's new in v1.31 since v1.23:

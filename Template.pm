@@ -6,9 +6,9 @@
 # Copyright 1996, 1997, 1999 M-J. Dominus.
 # You may copy and distribute this program under the
 # same terms as Perl iteself.  
-# If in doubt, write to mjd-perl-template+@pobox.com for a license.
+# If in doubt, write to mjd-perl-template+@plover.com for a license.
 #
-# Version 1.31
+# Version 1.40
 
 package Text::Template;
 require 5.004;
@@ -18,7 +18,7 @@ use Exporter;
 use vars '$ERROR';
 use strict;
 
-$Text::Template::VERSION = '1.31';
+$Text::Template::VERSION = '1.40';
 my %GLOBAL_PREPEND = ('Text::Template' => '');
 
 sub Version {
@@ -52,8 +52,10 @@ sub always_prepend
     my %a = @_;
     my $stype = uc(_param('type', %a)) || 'FILE';
     my $source = _param('source', %a);
+    my $untaint = _param('untaint', %a);
     my $prepend = _param('prepend', %a);
     my $alt_delim = _param('delimiters', %a);
+    my $broken = _param('broken', %a);
     unless (defined $source) {
       require Carp;
       Carp::croak("Usage: $ {pack}::new(TYPE => ..., SOURCE => ...)");
@@ -65,6 +67,8 @@ sub always_prepend
     my $self = {TYPE => $stype,
 		SOURCE => $source,
 		PREPEND => $prepend,
+                UNTAINT => $untaint,
+                BROKEN => $broken,
 		(defined $alt_delim ? (DELIM => $alt_delim) : ()),
 	       };
 
@@ -81,23 +85,30 @@ sub _acquire_data {
   my ($self) = @_;
   my $type = $self->{TYPE};
   if ($type eq 'STRING') {
-    return 1;
+    # nothing necessary    
   } elsif ($type eq 'FILE') {
-    my $text = _load_text($self->{SOURCE});
-    unless (defined $text) {
+    my $data = _load_text($self->{SOURCE});
+    unless (defined $data) {
       # _load_text already set $ERROR
       return undef;
     }
+    if ($self->{UNTAINT} && _is_clean($self->{SOURCE})) {
+      _unconditionally_untaint($data);
+    }
     $self->{TYPE} = 'STRING';
-    $self->{SOURCE} = $text;
+    $self->{FILENAME} = $self->{SOURCE};
+    $self->{SOURCE} = $data;
   } elsif ($type eq 'ARRAY') {
     $self->{TYPE} = 'STRING';
     $self->{SOURCE} = join '', @{$self->{SOURCE}};
   } elsif ($type eq 'FILEHANDLE') {
     $self->{TYPE} = 'STRING';
     local $/;
-    local *FH = $self->{SOURCE};
-    my $data = <FH>; # Extra assignment avoids bug in Solaris perl5.00[45].
+    my $fh = $self->{SOURCE};
+    my $data = <$fh>; # Extra assignment avoids bug in Solaris perl5.00[45].
+    if ($self->{UNTAINT}) {
+      _unconditionally_untaint($data);
+    }
     $self->{SOURCE} = $data;
   } else {
     # This should have been caught long ago, so it represents a 
@@ -112,6 +123,14 @@ sub source {
   my ($self) = @_;
   $self->_acquire_data unless $self->{DATA_ACQUIRED};
   return $self->{SOURCE};
+}
+
+sub set_source_data {
+  my ($self, $newdata) = @_;
+  $self->{SOURCE} = $newdata;
+  $self->{DATA_ACQUIRED} = 1;
+  $self->{TYPE} = 'STRING';
+  1;
 }
 
 sub compile {
@@ -224,11 +243,14 @@ sub fill_in {
 
   my $fi_varhash = _param('hash', %fi_a);
   my $fi_package = _param('package', %fi_a) ;
-  my $fi_broken  = _param('broken', %fi_a)  || \&_default_broken;
+  my $fi_broken  = 
+    _param('broken', %fi_a)  || $fi_self->{BROKEN} || \&_default_broken;
   my $fi_broken_arg = _param('broken_arg', %fi_a) || [];
   my $fi_safe = _param('safe', %fi_a);
   my $fi_ofh = _param('output', %fi_a);
   my $fi_eval_package;
+  my $fi_scrub_package = 0;
+  my $fi_filename = _param('filename') || $fi_self->{FILENAME} || 'template';
 
   my $fi_prepend = _param('prepend', %fi_a);
   unless (defined $fi_prepend) {
@@ -241,6 +263,7 @@ sub fill_in {
     $fi_eval_package = $fi_package;
   } elsif (defined $fi_varhash) {
     $fi_eval_package = _gensym();
+    $fi_scrub_package = 1;
   } else {
     $fi_eval_package = caller;
   }
@@ -276,10 +299,13 @@ sub fill_in {
       }
     } elsif ($fi_type eq 'PROG') {
       no strict;
-      my $fi_progtext = "package $fi_eval_package; $fi_prepend;\n#line 1\n$fi_text";
+      my $fi_lcomment = "#line $fi_lineno $fi_filename";
+      my $fi_progtext = 
+        "package $fi_eval_package; $fi_prepend;\n$fi_lcomment\n$fi_text;";
       my $fi_res;
       my $fi_eval_err = '';
       if ($fi_safe) {
+        $fi_safe->reval(q{undef $OUT});
 	$fi_res = $fi_safe->reval($fi_progtext);
 	$fi_eval_err = $@;
 	my $OUT = $fi_safe->reval('$OUT');
@@ -322,6 +348,8 @@ sub fill_in {
       die "Can't happen error #2";
     }
   }
+
+  _scrubpkg($fi_eval_package) if $fi_scrub_package;
   defined $fi_ofh ? 1 : $fi_r;
 }
 
@@ -356,8 +384,9 @@ sub _default_broken {
   my $prog_text = $a{text};
   my $err = $a{error};
   my $lineno = $a{lineno};
-  $err =~ s/\s+at .*//s;
-  "Program fragment at line $lineno delivered error ``$err''";
+  chomp $err;
+#  $err =~ s/\s+at .*//s;
+  "Program fragment delivered error ``$err''";
 }
 
 sub _load_text {
@@ -371,10 +400,30 @@ sub _load_text {
   <F>;
 }
 
+sub _is_clean {
+  my $z;
+  eval { ($z = join('', @_)), eval "#$z"; 1 }   # LOD
+}
+
+sub _unconditionally_untaint {
+  for (@_) {
+    ($_) = /(.*)/s;
+  }
+}
+
 {
   my $seqno = 0;
   sub _gensym {
     __PACKAGE__ . '::GEN' . $seqno++;
+  }
+  sub _scrubpkg {
+    my $s = shift;
+    no strict 'refs';
+    my $hash = $Text::Template::{$s."::"};
+    foreach my $key (%$hash) {
+      delete $hash->{$key};
+    }
+    delete $Text::Template::{$s."::"};
   }
 }
   
@@ -384,7 +433,7 @@ sub _load_text {
 sub _install_hash {
   my $hashlist = shift;
   my $dest = shift;
-  if (ref $hashlist eq 'HASH') {
+  if (UNIVERSAL::isa($hashlist, 'HASH')) {
     $hashlist = [$hashlist];
   }
   my $hash;
@@ -416,21 +465,21 @@ Text::Template - Expand template text with embedded Perl
 
 =head1 VERSION
 
-This file documents C<Text::Template> version B<1.30>
+This file documents C<Text::Template> version B<1.40>
 
 =head1 SYNOPSIS
 
  use Text::Template;
 
 
- $template = new Text::Template (TYPE => FILE,  SOURCE => 'filename.tmpl');
- $template = new Text::Template (TYPE => ARRAY, SOURCE => [ ... ] );
- $template = new Text::Template (TYPE => FILEHANDLE, SOURCE => $fh );
- $template = new Text::Template (TYPE => STRING, SOURCE => '...' );
- $template = new Text::Template (PREPEND => q{use strict;}, ...);
+ $template = Text::Template->new(TYPE => FILE,  SOURCE => 'filename.tmpl');
+ $template = Text::Template->new(TYPE => ARRAY, SOURCE => [ ... ] );
+ $template = Text::Template->new(TYPE => FILEHANDLE, SOURCE => $fh );
+ $template = Text::Template->new(TYPE => STRING, SOURCE => '...' );
+ $template = Text::Template->new(PREPEND => q{use strict;}, ...);
 
  # Use a different template file syntax:
- $template = new Text::Template (DELIMITERS => [$open, $close], ...);
+ $template = Text::Template->new(DELIMITERS => [$open, $close], ...);
 
  $recipient = 'King';
  $text = $template->fill_in();  # Replaces `{$recipient}' with `King'
@@ -439,11 +488,20 @@ This file documents C<Text::Template> version B<1.30>
  $T::recipient = 'Josh';
  $text = $template->fill_in(PACKAGE => T);
 
- $hash = { recipient => 'Abed-Nego' };
- $text = $template->fill_in(HASH => $hash, ...); # Recipient is Abed-Nego
+ # Pass many variables explicitly
+ $hash = { recipient => 'Abed-Nego',
+           friends => [ 'me', 'you' ],
+           enemies => { loathsome => 'Bill Gates',
+                        fearsome => 'Larry Ellison' },
+         };
+ $text = $template->fill_in(HASH => $hash, ...);
+ # $recipient is Abed-Nego,
+ # @friends is ( 'me', 'you' ),
+ # %enemies is ( loathsome => ..., fearsome => ... )
+
 
  # Call &callback in case of programming errors in template
- $text = $template->fill_in(BROKEN => \&callback, BROKEN_ARG => [...]);
+ $text = $template->fill_in(BROKEN => \&callback, BROKEN_ARG => $ref, ...);
 
  # Evaluate program fragments in Safe compartment with restricted permissions
  $text = $template->fill_in(SAFE => $compartment, ...);
@@ -523,7 +581,7 @@ template into the example result, and prints it out:
 
 	use Text::Template;
 
-	my $template = new Text::Template (SOURCE => 'formletter.tmpl')
+	my $template = Text::Template->new(SOURCE => 'formletter.tmpl')
 	  or die "Couldn't construct template: $Text::Template::ERROR";
 
 	my @monthname = qw(January February March April May June
@@ -751,6 +809,36 @@ string is the string that signals the beginning of each program
 fragment, and the second string is the string that signals the end of
 each program fragment.  See L<"Alternative Delimiters">, below.
 
+=item C<UNTAINT>
+
+If your program is running in taint mode, you may have problems if
+your templates are stored in files.  Data read from files is
+considered 'untrustworthy', and taint mode will not allow you to
+evaluate the Perl code in the file.  (It is afraid that a malicious
+person might have tampered with the file.)
+
+In some environments, however, local files are trustworthy.  You can
+tell C<Text::Template> that a certain file is trustworthy by supplying
+C<UNTAINT =E<gt> 1> in the call to C<new>.  This will tell
+C<Text::Template> to disable taint checks on template code that has
+come from a file, as long as the filename itself is considered
+trustworthy.  It will also disable taint checks on template code that
+comes from a filehandle.  When used with C<TYPE => 'string'> or C<TYPE
+=> 'array'>, it has no effect.
+
+See L<perlsec> for more complete information about tainting.
+
+=item C<PREPEND>
+
+This option is passed along to the C<fill_in> call unless it is
+overridden in the arguments to C<fill_in>.  See L<C<PREPEND> feature
+and using C<strict> in templates> below.
+
+=item C<BROKEN>
+
+This option is passed along to the C<fill_in> call unless it is
+overridden in the arguments to C<fill_in>.  See L<C<BROKEN>> below.
+
 =back
 
 =head2 C<compile>
@@ -790,7 +878,7 @@ may yield spurious warnings about
 
 so you might like to avoid them and use the capitalized versions.
 
-At present, there are seven legal options:  C<PACKAGE>, C<BROKEN>,
+At present, there are eight legal options:  C<PACKAGE>, C<BROKEN>,
 C<BROKEN_ARG>, C<SAFE>, C<HASH>, C<OUTPUT>, and C<DELIMITERS>.
 
 =over 4
@@ -967,18 +1055,19 @@ fragment that cased the error.
 If you don't specify a C<BROKEN> function, C<Text::Template> supplies
 a default one that returns something like
 
-	Program fragment at line 17 delivered error ``Illegal
-	division by 0''
+	Program fragment delivered error ``Illegal division by 0 at
+	template line 37''
 
-Since this is interpolated into the template at the place the error
-occurred, a template like this one:
+(Note that the format of this message has changed slightly since
+version 1.31.)  The return value of the C<BROKEN> function is
+interpolated into the template at the place the error occurred, so
+that this template:
 
 	(3+4)*5 = { 3+4)*5 }
 
 yields this result:
 
-	(3+4)*5 = Program fragment at line 1 delivered error
-	``syntax error''
+	(3+4)*5 = Program fragment delivered error ``syntax error at template line 1''
 
 If you specify a value for the C<BROKEN> attribute, it should be a
 reference to a function that C<fill_in> can call instead of the
@@ -995,12 +1084,16 @@ The source code of the program fragment that failed
 
 =item C<error>
 
-The text of the error message (C<$@>) generated by eval
+The text of the error message (C<$@>) generated by eval.
+
+The text has been modified to omit the trailing newline and to include
+the name of the template file (if there was one).  The line number
+counts from the beginning of the template, not from the beginning of
+the failed program fragment.
 
 =item C<lineno>
 
-The line number of the template data at which the  program fragment
-began
+The line number of the template at which the program fragment began.
 
 =back
 
@@ -1549,26 +1642,22 @@ interpolated.  This is what is known as a `trick'.
 =head2 Compatibility
 
 Every effort has been made to make this module compatible with older
-versions.  There are three exceptions.  One is the output format of
-the default C<BROKEN> subroutine; I decided that the old format was
-too verbose.  If this bothers you, it's easy to supply a custom
-subroutine that yields the old behavior.  The second is that the
-C<$OUT> feature arrogates the C<$OUT> variable for itself.  If you had
-templates that happened to use a variable named C<$OUT>, you will have
-to change them to use some other variable or all sorts of strangeness
-may result.
+versions.  The only known excepts follow:
 
-The third incompatibility is with the behavior of the \ metacharacter.
-In 0.1b, \\ was special everywhere, and the template processor always
-replaced it with a single backslash before passing the code to Perl
-for evaluation.  The rule now is more complicated but probably more
-convenient.  See the section on backslash processing, below, for a
-full discussion.
+The output format of the default C<BROKEN> subroutine has changed
+twice, most recently between versions 1.31 and 1.40.
 
-With a minor change to fix the format of the default C<BROKEN>
-subroutine, this version passes the test suite from the old version.
-(It is in C<t/01-basic.t>.) The old test suite was too small, but it's
-a little reassuring.
+Starting in version 1.10, the C<$OUT> variable is arrogated for a
+special meaning.  If you had templates before version 1.10 that
+happened to use a variable named C<$OUT>, you will have to change them
+to use some other variable or all sorts of strangeness will result.
+
+Between versions 0.1b and 1.00 the behavior of the \ metacharacter
+changed.  In 0.1b, \\ was special everywhere, and the template
+processor always replaced it with a single backslash before passing
+the code to Perl for evaluation.  The rule now is more complicated but
+probably more convenient.  See the section on backslash processing,
+below, for a full discussion.
 
 =head2 Backslash Processing
 
@@ -1579,9 +1668,9 @@ generate a backslash, because the code passed to Perl for evaluation
 was C<"\"> which is a syntax error.  If you wanted a backslash, you
 would have had to write C<{"\\\\"}>.
 
-In C<Text::Template> versions 1.0 through 1.10, there was a bug:
+In C<Text::Template> versions 1.00 through 1.10, there was a bug:
 Backslash was special everywhere.  In these versions, C<{"\n"}>
-generated the letter C<n>.  
+generated the letter C<n>.
 
 The bug has been corrected in version 1.11, but I did not go back to
 exactly the old rule, because I did not like the idea of having to
@@ -1670,13 +1759,17 @@ inside the template:
 			    );
 	}
 
+=head2 Automatic preprocessing of program fragments
+
+It may be useful to preprocess the program fragments before they are
+evaluated.  See C<Text::Template::Preprocess> for more details.>
 
 =head2 Author
 
 Mark-Jason Dominus, Plover Systems
 
 Please send questions and other remarks about this software to
-C<mjd-perl-template@pobox.com>
+C<mjd-perl-template+@plover.com>
 
 You can join a very low-volume (E<lt>10 messages per year) mailing
 list for announcements about this package.  Send an empty note to
@@ -1686,17 +1779,41 @@ For updates, visit C<http://www.plover.com/~mjd/perl/Template/>.
 
 =head2 Support?
 
-This software is version 1.0.  It is a complete rewrite of an older
-package, and may have bugs.  Suggestions and bug reports are always
-welcome.  Send them to C<mjd-perl-template@plover.com>.  (That is my
-address, not the address of the mailing list.  The mailing list
-address is a secret.)
+This software is version 1.40.  It may have bugs.  Suggestions and bug
+reports are always welcome.  Send them to
+C<mjd-perl-template+@plover.com>.  (That is my address, not the address
+of the mailing list.  The mailing list address is a secret.)
 
-=head2 Thanks
+=head1 LICENSE
+
+    Text::Template version 1.40
+    Copyright (C) 2001 Mark Jason Dominus
+
+    This program is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public License as
+    published by the Free Software Foundation; either version 2 of the
+    License, or (at your option) any later version.  You may also can
+    redistribute it and/or modify it under the terms of the Perl
+    Artistic License.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received copies of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+
+
+=head1 THANKS
 
 Many thanks to the following people for offering support,
-encouragement, advice, and all the other good stuff.  
+encouragement, advice, bug reports, and all the other good stuff.  
 
+David H. Adler /
+Itamar Almeida de Carvalho /
+Joel Appelbaum /
 Klaus Arnhold /
 Kevin Atteson /
 Chris.Brezil /
@@ -1708,6 +1825,7 @@ Joseph Cheek /
 San Deng /
 Bob Dougherty /
 Dan Franklin /
+gary at dls.net /
 Todd A. Green /
 Donald L. Greer Jr. /
 Michelangelo Grigni /
@@ -1716,10 +1834,13 @@ Matt X. Hunter /
 Robert M. Ioffe /
 Daniel LaLiberte /
 Reuven M. Lerner /
+Trip Lilley / 
 Joel Meulenberg /
 Jason Moore /
+Chris Nandor /
 Bek Oberin /
 Ron Pero /
+Steve Palincsar /
 Hans Persson /
 Jonathan Roy /
 Shabbir J. Safdar /
@@ -1740,6 +1861,7 @@ Larry Virden /
 Andy Wardley /
 Matt Womer /
 Andrew G Wood /
+Daini Xie /
 Michaely Yeung
 
 Special thanks to:
@@ -1769,9 +1891,6 @@ names in your templates.
 The line number information will be wrong if the template's lines are
 not terminated by C<"\n">.  You should let me know if this is a
 problem.  If you do, I will fix it.
-
-The default format for reporting of broken program fragments has
-changed since version 0.1.  
 
 The C<$OUT> variable has a special meaning in templates, so you cannot
 use it as if it were a regular variable.
