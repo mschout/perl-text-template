@@ -1,0 +1,62 @@
+
+TEXT::TEMPLATE VERSION 0.1 alpha
+27 December, 1995
+
+COPYRIGHT
+
+The Text::Template module is Copyright 1995 Mark-Jason Dominus.
+You may use, modify, copy, and distribute it under the same terms as
+Perl itself.
+
+DESCRIPTION
+
+This module is for filling in templates.  A template is a regular
+piece of text with tiny perl programs embedded in it.  When a template
+is filled in, the perl programs are evaluated, and replaced with their
+values.  This is useful for generating all sorts of program output,
+including HTML pages and error messages.  Templates can reside in
+files external to the program that is filling them in, and they can be
+modified and maintained by persons unfamiliar with perl, because the
+perl parts of a template are encapsulated.
+
+PREREQUISITES
+
+None.
+
+HOW TO BUILD AND INSTALL
+
+	perl Makefile.PL
+	make
+	make install
+
+No `test's yet; sorry.
+
+RECENT CHANGES
+
+This is the first general release.
+
+This is an ALPHA release.  Future changes are very likely.  Future
+incompatible changes are likely.
+
+TODO
+
+This package should fill in templates in a `Safe' compartment.
+
+The callback function that `fill_in' calls when a template contains an
+error should be eble to return an error message to the rest of the
+program.
+
+`my' variables in `fill_in' are still susceptible to being clobbered
+by template evaluation.  Perhaps it will be safer to make them `local'
+variables.
+
+Perhaps there should be a utility method for emptying out a package.
+
+BUGS TO
+
+Mark-Jason Dominus, Plover Systems
+mjd@pobox.com
+
+
+
+
