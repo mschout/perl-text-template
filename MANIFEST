@@ -2,7 +2,12 @@ MANIFEST
 Makefile.PL
 README
 Template.pm
-t/template1.t
-t/hash.t
+t/01-basic.t
+t/02-hash.t
+t/03-out.t
+t/04-safe.t
+t/05-safe2.t
+t/06-ofh.t
+t/07-safe3.t
 ChangeLog
 

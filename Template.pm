@@ -8,15 +8,16 @@
 # same terms as Perl iteself.  
 # If in doubt, write to mjd-perl-template@pobox.com for a license.
 #
-# Version 1.03
+# Version 1.10
 
 package Text::Template;
+require 5.004;
 use Exporter;
 @EXPORT_OK = qw(fill_in_file fill_in_string TTerror);
 use vars '$ERROR';
 use strict;
 
-$Text::Template::VERSION = '1.03';
+$Text::Template::VERSION = '1.10';
 
 sub Version {
   $Text::Template::VERSION;
@@ -70,7 +71,8 @@ sub compile {
     $self->{TYPE} = 'STRING';
     local $/;
     local *FH = $self->{SOURCE};
-    $self->{SOURCE} = <FH>;
+    my $data = <FH>; # Extra assignment avoids bug in Solaris perl5.00[45].
+    $self->{SOURCE} = $data;
   }
 
   unless ($self->{TYPE} eq 'STRING') {
@@ -148,32 +150,36 @@ sub fill_in {
   my $fi_broken  = _param('broken', %fi_a)  || \&_default_broken;
   my $fi_broken_arg = _param('broken_arg', %fi_a) || [];
   my $fi_safe = _param('safe', %fi_a);
+  my $fi_ofh = _param('output', %fi_a);
+  my $fi_eval_package;
 
-  if ($fi_varhash) {
-    unless (defined $fi_package) {
-      $fi_package = _gensym();
-    }
-    if (ref $fi_varhash eq 'HASH') {
-      $fi_varhash = [$fi_varhash];
-    }
-    my $varhash;
-    foreach $varhash (@$fi_varhash) {
-      my $name;
-      foreach $name (keys %$varhash) {
-	my $val = $varhash->{$name};
-	no strict 'refs';
-	local *SYM = *{"$ {fi_package}::$name"};
-	if (! defined $val) {
-	  *SYM = undef;
-	} elsif (ref $val) {
-	  *SYM = $val;
-	} else {
-	  *SYM = \$val;
-	}
-      }
-    }
+  if (defined $fi_safe) {
+    $fi_eval_package = 'main';
+  } elsif (defined $fi_package) {
+    $fi_eval_package = $fi_package;
+  } elsif (defined $fi_varhash) {
+    $fi_eval_package = _gensym();
   } else {
-    $fi_package = caller unless defined $fi_package;
+    $fi_eval_package = caller;
+  }
+
+  my $fi_install_package;
+  if (defined $fi_varhash) {
+    if (defined $fi_package) {
+      $fi_install_package = $fi_package;
+    } elsif (defined $fi_safe) {
+      $fi_install_package = $fi_safe->root;
+    } else {
+      $fi_install_package = $fi_eval_package; # The gensymmed one
+    }
+    _install_hash($fi_varhash => $fi_install_package);
+  }
+
+  if (defined $fi_package && defined $fi_safe) {
+    no strict 'refs';
+    # Big fat magic here: Fix it so that the user-specified package
+    # is the default one available in the safe compartment.
+    *{$fi_safe->root . '::'} = \%{$fi_package . '::'};   # LOD
   }
 
   my $fi_r = '';
@@ -181,35 +187,60 @@ sub fill_in {
   foreach $fi_item (@{$fi_self->{SOURCE}}) {
     my ($fi_type, $fi_text, $fi_lineno) = @$fi_item;
     if ($fi_type eq 'TEXT') {
-      $fi_r .= $fi_text;
+      if ($fi_ofh) {
+	print $fi_ofh $fi_text;
+      } else {
+	$fi_r .= $fi_text;
+      }
     } elsif ($fi_type eq 'PROG') {
       no strict;
-      my $fi_progtext = "package $fi_package; $fi_text";
+      my $fi_progtext = "package $fi_eval_package; $fi_text";
       my $fi_res;
+      my $fi_eval_err = '';
       if ($fi_safe) {
 	$fi_res = $fi_safe->reval($fi_progtext);
+	$fi_eval_err = $@;
+	my $OUT = $fi_safe->reval('$OUT');
+	$fi_res = $OUT if defined $OUT;
       } else {
+	my $OUT;
 	$fi_res = eval $fi_progtext;
+	$fi_eval_err = $@;
+	$fi_res = $OUT if defined $OUT;
       }
-      if ($@) {
+
+      # If the value of the filled-in text really was undef,
+      # change it to an explicit empty string to avoid undefined
+      # value warnings later.
+      $fi_res = '' unless defined $fi_res;
+
+      if ($fi_eval_err) {
 	$fi_res = $fi_broken->(text => $fi_text,
-			       error => $@,
+			       error => $fi_eval_err,
 			       lineno => $fi_lineno,
 			       arg => $fi_broken_arg,
 			       );
 	if (defined $fi_res) {
-	  $fi_r .= $fi_res;
+	  if (defined $fi_ofh) {
+	    print $fi_ofh $fi_res;
+	  } else {
+	    $fi_r .= $fi_res;
+	  }
 	} else {
 	  return $fi_res;		# Undefined means abort processing
 	}
       } else {
-	$fi_r .= $fi_res;
+	if (defined $fi_ofh) {
+	  print $fi_ofh $fi_res;
+	} else {
+	  $fi_r .= $fi_res;
+	}
       }
     } else {
       die "Can't happen error #2";
     }
   }
-  $fi_r;
+  defined $fi_ofh ? 1 : $fi_r;
 }
 
 sub fill_this_in {
@@ -262,6 +293,33 @@ sub _load_text {
   }
 }
   
+# Given a hashful of variables (or a list of such hashes)
+# install the variables into the specified package,
+# overwriting whatever variables were there before.
+sub _install_hash {
+  my $hashlist = shift;
+  my $dest = shift;
+  if (ref $hashlist eq 'HASH') {
+    $hashlist = [$hashlist];
+  }
+  my $hash;
+  foreach $hash (@$hashlist) {
+    my $name;
+    foreach $name (keys %$hash) {
+      my $val = $hash->{$name};
+      no strict 'refs';
+      local *SYM = *{"$ {dest}::$name"};
+      if (! defined $val) {
+	*SYM = undef;
+      } elsif (ref $val) {
+	*SYM = $val;
+      } else {
+	*SYM = \$val;
+      }
+    }
+  }
+}
+
 sub TTerror { $ERROR }
 
 1;
@@ -286,20 +344,28 @@ Text::Template - Expand template text with embedded Perl
 
  $T::recipient = 'Josh';
  $text = $template->fill_in(PACKAGE => T);
- print $text;
 
+ $hash = { recipient => 'Abed-Nego' };
+ $text = $template->fill_in(HASH => $hash, ...); # Recipient is Abed-Nego
+
+ # Call &callback in case of programming errors in template
  $text = $template->fill_in(BROKEN => \&callback, BROKEN_ARG => [...]);
+
+ # Evaluate program fragments in Safe compartment with restricted permissions
  $text = $template->fill_in(SAFE => $compartment, ...);
 
+ # Print result text instead of returning it
+ $success = $template->fill_in(OUTPUT => \*FILEHANDLE, ...);
+
  use Text::Template 'fill_in_string';
- $text = fill_in_string( <<EOM, 'package' => T);
+ $text = fill_in_string( <<EOM, 'package' => T, ...);
  Dear {$recipient},
  Pay me at once.
         Love, 
          G.V.
  EOM
 
- use Text::Template ''fill_in_file';
+ use Text::Template 'fill_in_file';
  $text = fill_in_file($filename, ...);
 
 =head1 DESCRIPTION
@@ -421,6 +487,49 @@ into the last line.  The output will look something like this:
 
 That is all the syntax there is.  
 
+=head2 The C<$OUT> variable
+
+There is one special trick you can play in a template.  Here is the
+motivation for it:  Suppose you are going to pass an array, C<@items>,
+into the template, and you want the template to generate a bulleted
+list with a header, like this:
+
+	Here is a list of the things I have got for you since 1907:
+	  * Ivory
+	  * Apes
+	  * Peacocks
+	  * ...
+One way to do it is with a template like this:
+
+	Here is a list of the things I have got for you since 1907:
+	{ my $blist = '';
+          foreach $i (@items) {
+            $blist .= qq{  * $i\n};
+          }    
+          $blist;
+        } 
+
+Here we construct the list in a variable called C<$blist>, which we
+return at the end.  This is a little cumbersome.  There is a shortcut.
+
+Inside of templates, there is a special variable called C<$OUT>.
+Anything you append to this variable will appear in the output of the
+template.  Also, if you use C<$OUT> in a program fragment, the normal
+behavior, of replacing the fragment with its return value, is
+disabled; instead the fragment is replaced with the value of C<$OUT>.
+This means that you can write the template above like this:
+
+	Here is a list of the things I have got for you since 1907:
+	{ foreach $i (@items) {
+            $OUT .= "  * $i\n";
+          }    
+        } 
+
+C<$OUT> is reinitialized to the empty string at the start of each
+program fragment.  It is private to C<Text::Template>, so that means
+you can't use a variable named C<$OUT> in your template without
+invoking the special behavior.
+
 =head2 General Remarks
 
 All C<Text::Template> functions return C<undef> on failure, and set the
@@ -517,8 +626,8 @@ may yield spurious warnings about
 
 so you might like to avoid them and use the capitalized versions.
 
-At present, there are four legal options:  C<PACKAGE>, C<BROKEN>,
-C<BROKEN_ARG>, and C<SAFE>.
+At present, there are six legal options:  C<PACKAGE>, C<BROKEN>,
+C<BROKEN_ARG>, C<SAFE>, C<HASH>, and C<OUTPUT>.
 
 =over 4
 
@@ -549,11 +658,9 @@ Here's an example of using C<PACKAGE>:
 	Enclosed please find a list of things I have gotten
 	for you since 1907:
 
-	{ $list = '';
-	  foreach $item (@items) {
-	    $list .= " o \u$item\n";
+	{ foreach $item (@items) {
+	    $OUT .= " * \u$item\n";
 	  }
-	  $list;
 	}
 
 	Signed,
@@ -772,7 +879,42 @@ to find, and proceed accordingly.
 If you give C<fill_in> a C<SAFE> option, its value should be a safe
 compartment object from the C<Safe> package.  All evaluation of
 program fragments will be performed in this compartment.  See L<Safe>
-for full details.
+for full details about such compartments and how to restrict the
+operations that can be performed in them.
+
+If you use the C<PACKAGE> option with C<SAFE>, the package you specify
+will be placed into the safe compartment and evaluation will take
+place in that package as usual.  
+
+If not, C<SAFE> operation is a little different from the default.
+Usually, if you don't specify a package, evaluation of program
+fragments occurs in the package from which the template was invoked.
+But in C<SAFE> mode the evaluation occurs inside the safe compartment
+and cannot affect the calling package.  Normally, if you use C<HASH>
+without C<PACKAGE>, the hash variables are imported into a private,
+one-use-only package.  But if you use C<HASH> and C<SAFE> together
+without C<PACKAGE>, the hash variables will just be loaded into the
+root namespace of the C<Safe> compartment.
+
+=item C<OUTPUT>
+
+If your template is going to generate a lot of text that you are just
+going to print out again anyway,  you can save memory by having
+C<Text::Template> print out the text as it is generated instead of
+making it into a big string and returning the string.  If you supply
+the C<OUTPUT> option to C<fill_in>, the value should be a filehandle.
+The generated text will be printed to this filehandle as it is
+constructed.  For example:
+
+	$template->fill_in(OUTPUT => \*STDOUT, ...);
+
+fills in the C<$template> as usual, but the results are immediately
+printed to STDOUT.  This may result in the output appearing more
+quickly than it would have otherwise.
+
+If you use C<OUTPUT>, the return value from C<fill_in> is still true on
+success and false on failure, but the complete text is not returned to
+the caller.
 
 =back
 
@@ -1010,16 +1152,47 @@ which is what you want.
 This trick is so easy that I thought didn't need to put in the feature
 that lets you change the bracket characters to something else.
 
+=head2 Shut Up!
+
+People sometimes try to put an initialization section at the top of
+their templates, like this:
+
+	{ ...
+	  $var = 17;
+	}
+
+Then they complain because there is a C<17> at the top of the output
+that they didn't want to have there.  
+
+Remember that a program fragment is replaced with its own return
+value, and that in Perl the return value of a code block is the value
+of the last expression that was evaluated, which in this case is 17.  
+To prevent the 17 from appearing in the output is very simple:
+
+	{ ...
+	  $var = 17;
+	  '';
+	}
+
+Now the last expression evaluated yields the empty string, which is
+invisible.
+
 =head2 Compatibility
 
 Every effort has been made to make this module compatible with older
-versions.  The single exception is the output format of the default
-C<BROKEN> subroutine; I decided that the olkd format was too verbose.
-If this bothers you, it's easy to supply a custom subroutine that
-yields the old behavior.
+versions.  There are two exceptions.  One is the output format of the
+default C<BROKEN> subroutine; I decided that the old format was too
+verbose.  If this bothers you, it's easy to supply a custom subroutine
+that yields the old behavior.  The other difference is that the
+C<$OUT> feature arrogates the C<$OUT> variable for itself.  If you had
+templates that happened to use a variable named C<$OUT>, you will have
+to change them to use some other variable or all sorts of strangeness
+may result.
 
-This version passes the test suite from the old version.  The old test
-suite is too small, but it's a little reassuring.
+With a minor change to fix the format of the default C<BROKEN>
+subroutine, this version passes the test suite from the old version.
+(It is in <t/01-basic.t>.) The old test suite was too small, but it's
+a little reassuring.
 
 =head2 A short note about C<$Text::Template::ERROR>
 
@@ -1090,10 +1263,7 @@ C<mjd-perl-template@plover.com>.
 =head2 Thanks
 
 Many thanks to the following people for offering support,
-encouragement, advice, and all the other good stuff.  Especially to
-Jonathan Roy for telling me how to do the C<Safe> support (I spent two
-years worrying about it, and then Jonathan pointed out that it was
-trivial.)
+encouragement, advice, and all the other good stuff.  
 
 Klaus Arnhold /
 Mike Brodhead /
@@ -1117,6 +1287,7 @@ Bek Oberin /
 Ron Pero /
 Hans Persson /
 Jonathan Roy /
+Shabbir J. Safdar /
 Jennifer D. St Clair /
 Uwe Schneider /
 Randal L. Schwartz /
@@ -1129,10 +1300,35 @@ Michael J. Suzio /
 Dennis Taylor /
 James H. Thompson /
 Shad Todd /
+Larry Virden /
 Andy Wardley /
 Matt Womer /
 Andrew G Wood /
 Michaely Yeung
+
+Special thanks to:
+
+=over 2
+
+=item Jonathan Roy 
+
+for telling me how to do the C<Safe> support (I spent two years
+worrying about it, and then Jonathan pointed out that it was trivial.)
+
+=item Ranjit Bhatnagar 
+
+for demanding less verbose fragments like they have in ASP, for
+helping me figure out the Right Thing, and, especially, for talking me
+out of adding any new syntax.  These discussions resulted in the
+C<$OUT> feature.
+
+=item Shabbir J. Safdar
+
+for volunteering to maintain a slightly modified version of
+C<Text::Template> which will run under perl.5003 and other early
+versions. 
+
+=back
 
 =head2 Bugs and Caveats
 
@@ -1140,19 +1336,17 @@ C<my> variables in C<fill_in> are still susceptible to being clobbered
 by template evaluation.  They all begin with C<fi_>, so avoid those
 names in your templates.
 
-Maybe there should be a utility method for emptying out a package?Or
-for pre-loading a package from a hash?
-
-Maybe there should be a control item for doing C<#if>.  Perl's `if' is
-sufficient, but a little cumbersome to handle the quoting.  Ranjit and
-I brainstormed a wonderful general solution to this which may be
-forthcoming.
-
 The line number information will be wrong if the template's lines are
-not terminated by C<"\n">.  Someone should let me know if this is a
-problem.
+not terminated by C<"\n">.  You should let me know if this is a
+problem.  If you do, I will fix it.
 
-There are not enough tests in the test suite.
+The default format for reporting of broken program fragments has
+changed since version 0.1.  
+
+The C<$OUT> variable has a special meaning in templates, so you cannot
+use it as if it were a regular variable.
+
+There are not quite enough tests in the test suite.
 
 =cut
 
