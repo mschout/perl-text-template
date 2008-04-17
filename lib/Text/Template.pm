@@ -3,12 +3,12 @@
 #
 # Fill in `templates'
 #
-# Copyright 1996, 1997, 1999, 2001, 2002, 2003 M-J. Dominus.
+# Copyright 1996, 1997, 1999, 2001, 2002, 2003, 2008 M-J. Dominus.
 # You may copy and distribute this program under the
 # same terms as Perl iteself.  
 # If in doubt, write to mjd-perl-template+@plover.com for a license.
 #
-# Version 1.44
+# Version 1.45
 
 package Text::Template;
 require 5.004;
@@ -18,7 +18,7 @@ use Exporter;
 use vars '$ERROR';
 use strict;
 
-$Text::Template::VERSION = '1.44';
+$Text::Template::VERSION = '1.45';
 my %GLOBAL_PREPEND = ('Text::Template' => '');
 
 sub Version {
@@ -469,7 +469,7 @@ Text::Template - Expand template text with embedded Perl
 
 =head1 VERSION
 
-This file documents C<Text::Template> version B<1.44>
+This file documents C<Text::Template> version B<1.45>
 
 =head1 SYNOPSIS
 
@@ -1450,10 +1450,9 @@ It may be safer to choose delimiters that begin with a newline
 character.  
 
 Because the parsing of templates is simplified by the absence of
-backslash escapes, using alternative C<DELIMITERS> I<speeds up> the
+backslash escapes, using alternative C<DELIMITERS> may speed up the
 parsing process by 20-25%.  This shows that my original choice of C<{>
-and C<}> was very bad.  I therefore recommend that you use alternative
-delimiters whenever possible. 
+and C<}> was very bad. 
 
 =head2 C<PREPEND> feature and using C<strict> in templates
 
@@ -1809,15 +1808,15 @@ For updates, visit C<http://www.plover.com/~mjd/perl/Template/>.
 
 =head2 Support?
 
-This software is version 1.44.  It may have bugs.  Suggestions and bug
+This software is version 1.45.  It may have bugs.  Suggestions and bug
 reports are always welcome.  Send them to
 C<mjd-perl-template+@plover.com>.  (That is my address, not the address
 of the mailing list.  The mailing list address is a secret.)
 
 =head1 LICENSE
 
-    Text::Template version 1.44
-    Copyright (C) 2003 Mark Jason Dominus
+    Text::Template version 1.45
+    Copyright (C) 2008 Mark Jason Dominus
 
     This program is free software; you can redistribute it and/or
     modify it under the terms of the GNU General Public License as
