@@ -22,3 +22,4 @@ t/12-preprocess.t
 t/13-taint.t
 t/14-broken.t
 META.yml                                 Module meta-data (added by MakeMaker)
+META.json                                Module JSON meta-data (added by MakeMaker)

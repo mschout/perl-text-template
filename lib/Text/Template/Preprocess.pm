@@ -2,7 +2,7 @@
 package Text::Template::Preprocess;
 use Text::Template;
 @ISA = qw(Text::Template);
-$Text::Template::Preprocess::VERSION = 1.45;
+$Text::Template::Preprocess::VERSION = 1.46;
 
 sub fill_in {
   my $self = shift;
@@ -34,7 +34,7 @@ Text::Template::Preprocess - Expand template text with embedded Perl
 
 =head1 VERSION
 
-This file documents C<Text::Template::Preprocess> version B<1.45>
+This file documents C<Text::Template::Preprocess> version B<1.46>
 
 =head1 SYNOPSIS
 
@@ -107,7 +107,7 @@ L<Text::Template>
 =head1 AUTHOR
 
 
-Mark-Jason Dominus, Plover Systems
+Mark Jason Dominus, Plover Systems
 
 Please send questions and other remarks about this software to
 C<mjd-perl-template+@plover.com>
@@ -120,8 +120,8 @@ For updates, visit C<http://www.plover.com/~mjd/perl/Template/>.
 
 =head1 LICENSE
 
-    Text::Template::Preprocess version 1.45
-    Copyright (C) 2008 Mark Jason Dominus
+    Text::Template::Preprocess version 1.46
+    Copyright 2013 Mark Jason Dominus
 
     This program is free software; you can redistribute it and/or
     modify it under the terms of the GNU General Public License as

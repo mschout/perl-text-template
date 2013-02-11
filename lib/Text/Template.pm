@@ -3,12 +3,12 @@
 #
 # Fill in `templates'
 #
-# Copyright 1996, 1997, 1999, 2001, 2002, 2003, 2008 M-J. Dominus.
+# Copyright 2013 M. J. Dominus.
 # You may copy and distribute this program under the
 # same terms as Perl iteself.  
 # If in doubt, write to mjd-perl-template+@plover.com for a license.
 #
-# Version 1.45
+# Version 1.46
 
 package Text::Template;
 require 5.004;
@@ -18,7 +18,7 @@ use Exporter;
 use vars '$ERROR';
 use strict;
 
-$Text::Template::VERSION = '1.45';
+$Text::Template::VERSION = '1.46';
 my %GLOBAL_PREPEND = ('Text::Template' => '');
 
 sub Version {
@@ -50,7 +50,7 @@ sub always_prepend
   sub new {
     my $pack = shift;
     my %a = @_;
-    my $stype = uc(_param('type', %a)) || 'FILE';
+    my $stype = uc(_param('type', %a) || "FILE");
     my $source = _param('source', %a);
     my $untaint = _param('untaint', %a);
     my $prepend = _param('prepend', %a);
@@ -296,11 +296,12 @@ sub fill_in {
   foreach $fi_item (@{$fi_self->{SOURCE}}) {
     my ($fi_type, $fi_text, $fi_lineno) = @$fi_item;
     if ($fi_type eq 'TEXT') {
-      if ($fi_ofh) {
-	print $fi_ofh $fi_text;
-      } else {
-	$fi_r .= $fi_text;
-      }
+      $fi_self->append_text_to_output(
+        text   => $fi_text,
+        handle => $fi_ofh,
+        out    => \$fi_r,
+        type   => $fi_type,
+      );
     } elsif ($fi_type eq 'PROG') {
       no strict;
       my $fi_lcomment = "#line $fi_lineno $fi_filename";
@@ -333,20 +334,22 @@ sub fill_in {
 			       arg => $fi_broken_arg,
 			       );
 	if (defined $fi_res) {
-	  if (defined $fi_ofh) {
-	    print $fi_ofh $fi_res;
-	  } else {
-	    $fi_r .= $fi_res;
-	  }
+          $fi_self->append_text_to_output(
+            text   => $fi_res,
+            handle => $fi_ofh,
+            out    => \$fi_r,
+            type   => $fi_type,
+          );
 	} else {
 	  return $fi_res;		# Undefined means abort processing
 	}
       } else {
-	if (defined $fi_ofh) {
-	  print $fi_ofh $fi_res;
-	} else {
-	  $fi_r .= $fi_res;
-	}
+        $fi_self->append_text_to_output(
+          text   => $fi_res,
+          handle => $fi_ofh,
+          out    => \$fi_r,
+          type   => $fi_type,
+        );
       }
     } else {
       die "Can't happen error #2";
@@ -355,6 +358,18 @@ sub fill_in {
 
   _scrubpkg($fi_eval_package) if $fi_scrub_package;
   defined $fi_ofh ? 1 : $fi_r;
+}
+
+sub append_text_to_output {
+  my ($self, %arg) = @_;
+
+  if (defined $arg{handle}) {
+    print { $arg{handle} } $arg{text};
+  } else {
+    ${ $arg{out} } .= $arg{text};
+  }
+
+  return;
 }
 
 sub fill_this_in {
@@ -469,7 +484,7 @@ Text::Template - Expand template text with embedded Perl
 
 =head1 VERSION
 
-This file documents C<Text::Template> version B<1.45>
+This file documents C<Text::Template> version B<1.46>
 
 =head1 SYNOPSIS
 
@@ -1793,9 +1808,20 @@ inside the template:
 It may be useful to preprocess the program fragments before they are
 evaluated.  See C<Text::Template::Preprocess> for more details.
 
+=head2 Automatic postprocessing of template hunks
+
+It may be useful to process hunks of output before they are appended to
+the result text.  For this, subclass and replace the C<append_text_to_result>
+method.  It is passed a list of pairs with these entries:
+
+  handle - a filehandle to which to print the desired output
+  out    - a ref to a string to which to append, to use if handle is not given
+  text   - the text that will be appended
+  type   - where the text came from: TEXT for literal text, PROG for code
+
 =head2 Author
 
-Mark-Jason Dominus, Plover Systems
+Mark Jason Dominus, Plover Systems
 
 Please send questions and other remarks about this software to
 C<mjd-perl-template+@plover.com>
@@ -1808,15 +1834,15 @@ For updates, visit C<http://www.plover.com/~mjd/perl/Template/>.
 
 =head2 Support?
 
-This software is version 1.45.  It may have bugs.  Suggestions and bug
+This software is version 1.46.  It may have bugs.  Suggestions and bug
 reports are always welcome.  Send them to
 C<mjd-perl-template+@plover.com>.  (That is my address, not the address
 of the mailing list.  The mailing list address is a secret.)
 
 =head1 LICENSE
 
-    Text::Template version 1.45
-    Copyright (C) 2008 Mark Jason Dominus
+    Text::Template version 1.46
+    Copyright 2013 Mark Jason Dominus
 
     This program is free software; you can redistribute it and/or
     modify it under the terms of the GNU General Public License as
