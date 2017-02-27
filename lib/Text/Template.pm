@@ -443,6 +443,8 @@ sub _unconditionally_untaint {
     foreach my $key (keys %$hash) {
       undef $hash->{$key};
     }
+    %$hash = ();
+    delete $Text::Template::{$s."::"};
   }
 }
   

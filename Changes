@@ -1,0 +1,7 @@
+Revision history for Text::Template
+
+{{$NEXT}}
+    - Fix longstanding memory leak in _scrubpkg() [#22031]
+
+0.01 - 0.45 Various
+    - Maintained by Mark Jason Dominus (MJD)
