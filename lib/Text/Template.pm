@@ -5,7 +5,7 @@
 #
 # Copyright 2013 M. J. Dominus.
 # You may copy and distribute this program under the
-# same terms as Perl iteself.  
+# same terms as Perl itself.  
 # If in doubt, write to mjd-perl-template+@plover.com for a license.
 #
 
@@ -671,7 +671,7 @@ C<DELIMITERS> option.  (See L<"Alternative Delimiters">, below.)
 
 Each program fragment should be a sequence of Perl statements, which
 are evaluated the usual way.  The result of the last statement
-executed will be evaluted in scalar context; the result of this
+executed will be evaluated in scalar context; the result of this
 statement is a string, which is interpolated into the template in
 place of the program fragment itself.
 
@@ -1487,7 +1487,7 @@ each and every code fragment:
 
 Because we didn't put C<use strict> at the top of the second fragment,
 it was only active in the first fragment, and we didn't get any
-C<strict> checking in the second fragment.  Then we mispelled C<$foo>
+C<strict> checking in the second fragment.  Then we misspelled C<$foo>
 and the error wasn't caught.  
 
 C<Text::Template> version 1.22 and higher has a new feature to make
