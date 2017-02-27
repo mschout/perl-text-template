@@ -8,9 +8,11 @@
 # same terms as Perl iteself.  
 # If in doubt, write to mjd-perl-template+@plover.com for a license.
 #
-# Version 1.46
 
 package Text::Template;
+
+# ABSTRACT: Expand template text with embedded Perl
+
 require 5.004;
 use Exporter;
 @ISA = qw(Exporter);
@@ -18,7 +20,6 @@ use Exporter;
 use vars '$ERROR';
 use strict;
 
-$Text::Template::VERSION = '1.46';
 my %GLOBAL_PREPEND = ('Text::Template' => '');
 
 sub Version {
@@ -479,14 +480,7 @@ sub TTerror { $ERROR }
 
 1;
 
-
-=head1 NAME 
-
-Text::Template - Expand template text with embedded Perl
-
-=head1 VERSION
-
-This file documents C<Text::Template> version B<1.46>
+__END__
 
 =head1 SYNOPSIS
 
@@ -1821,7 +1815,7 @@ method.  It is passed a list of pairs with these entries:
   text   - the text that will be appended
   type   - where the text came from: TEXT for literal text, PROG for code
 
-=head2 Author
+=head1 AUTHOR
 
 Mark Jason Dominus, Plover Systems
 
@@ -1834,34 +1828,11 @@ C<mjd-perl-template-request@plover.com> to join.
 
 For updates, visit C<http://www.plover.com/~mjd/perl/Template/>.
 
-=head2 Support?
+=head1 SUPPORT
 
-This software is version 1.46.  It may have bugs.  Suggestions and bug
-reports are always welcome.  Send them to
-C<mjd-perl-template+@plover.com>.  (That is my address, not the address
-of the mailing list.  The mailing list address is a secret.)
-
-=head1 LICENSE
-
-    Text::Template version 1.46
-    Copyright 2013 Mark Jason Dominus
-
-    This program is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public License as
-    published by the Free Software Foundation; either version 2 of the
-    License, or (at your option) any later version.  You may also can
-    redistribute it and/or modify it under the terms of the Perl
-    Artistic License.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received copies of the GNU General Public License
-    along with this program; if not, write to the Free Software
-    Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
-
+This software may have bugs.  Suggestions and bug reports are always welcome.
+Send them to C<mjd-perl-template+@plover.com>.  (That is my address, not the
+address of the mailing list.  The mailing list address is a secret.)
 
 =head1 THANKS
 

@@ -1,0 +1,36 @@
+# Avoid Makemaker generated and utility files.
+\bMANIFEST\.bak
+\bMakefile$
+\bblib/
+\bMakeMaker-\d
+\bpm_to_blib\.ts$
+\bpm_to_blib$
+\bblibdirs\.ts$         # 6.18 through 6.25 generated this
+
+# Avoid temp and backup files.
+~$
+\.old$
+\#$
+\b\.#
+\.bak$
+
+\.lwpcookies
+\.releaserc
+.+\.diff
+.+\.patch
+.+\.bak
+.+~
+.+\.orig
+.+\.rej
+.hg
+.shipit
+.git
+blib
+dist.ini
+_build
+^Build$
+Makefile$
+MYMETA.yml
+MANIFEST.SKIP
+Text-Template-.+.tar.gz
+^MYMETA\.json$

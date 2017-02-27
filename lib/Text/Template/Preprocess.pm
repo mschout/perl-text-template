@@ -1,8 +1,10 @@
 
 package Text::Template::Preprocess;
+
+# ABSTRACT: Expand template text with embedded Perl
+
 use Text::Template;
 @ISA = qw(Text::Template);
-$Text::Template::Preprocess::VERSION = 1.46;
 
 sub fill_in {
   my $self = shift;
@@ -27,14 +29,7 @@ sub preprocessor {
 
 1;
 
-
-=head1 NAME 
-
-Text::Template::Preprocess - Expand template text with embedded Perl
-
-=head1 VERSION
-
-This file documents C<Text::Template::Preprocess> version B<1.46>
+__END__
 
 =head1 SYNOPSIS
 
@@ -106,7 +101,6 @@ L<Text::Template>
 
 =head1 AUTHOR
 
-
 Mark Jason Dominus, Plover Systems
 
 Please send questions and other remarks about this software to
@@ -117,28 +111,4 @@ list for announcements about this package.  Send an empty note to
 C<mjd-perl-template-request@plover.com> to join.
 
 For updates, visit C<http://www.plover.com/~mjd/perl/Template/>.
-
-=head1 LICENSE
-
-    Text::Template::Preprocess version 1.46
-    Copyright 2013 Mark Jason Dominus
-
-    This program is free software; you can redistribute it and/or
-    modify it under the terms of the GNU General Public License as
-    published by the Free Software Foundation; either version 2 of the
-    License, or (at your option) any later version.  You may also can
-    redistribute it and/or modify it under the terms of the Perl
-    Artistic License.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received copies of the GNU General Public License
-    along with this program; if not, write to the Free Software
-    Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
-
-
-=cut
 
