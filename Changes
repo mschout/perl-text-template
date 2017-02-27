@@ -1,6 +1,8 @@
 Revision history for Text::Template
 
 {{$NEXT}}
+
+1.47  2017-02-27
     - Fix longstanding memory leak in _scrubpkg() [#22031]
     - Fix various spelling errors [#86872]
 
