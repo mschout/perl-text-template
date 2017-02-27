@@ -1,6 +1,8 @@
 Revision history for Text::Template
 
 {{$NEXT}}
+    - remove COPYING and Artistic files from the dist.  These are replaced by
+      the Dist::Zilla generated LICENSE file.
 
 1.47  2017-02-27
     - Fix longstanding memory leak in _scrubpkg() [#22031]
