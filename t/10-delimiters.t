@@ -5,11 +5,11 @@
 
 use Text::Template;
 
-die "This is the test program for Text::Template version 1.46.
+die "This is the test program for Text::Template version 1.47.
 You are using version $Text::Template::VERSION instead.
 That does not make sense.\n
 Aborting"
-  unless $Text::Template::VERSION == 1.46;
+  unless $Text::Template::VERSION == 1.47;
 
 print "1..18\n";
 $n = 1;
