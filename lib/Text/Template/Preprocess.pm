@@ -3,6 +3,9 @@ package Text::Template::Preprocess;
 
 # ABSTRACT: Expand template text with embedded Perl
 
+use strict;
+use warnings;
+
 use Text::Template;
 @ISA = qw(Text::Template);
 

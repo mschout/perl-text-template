@@ -19,6 +19,7 @@ use Exporter;
 @EXPORT_OK = qw(fill_in_file fill_in_string TTerror);
 use vars '$ERROR';
 use strict;
+use warnings;
 
 my %GLOBAL_PREPEND = ('Text::Template' => '');
 
