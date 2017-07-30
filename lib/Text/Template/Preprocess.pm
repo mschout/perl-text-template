@@ -7,7 +7,7 @@ use strict;
 use warnings;
 
 use Text::Template;
-@ISA = qw(Text::Template);
+our @ISA = qw(Text::Template);
 
 sub fill_in {
   my $self = shift;
