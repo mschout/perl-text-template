@@ -256,6 +256,7 @@ sub fill_in {
   my $fi_eval_package;
   my $fi_scrub_package = 0;
   my $fi_filename = _param('filename') || $fi_self->{FILENAME} || 'template';
+  my $fi_strict = _param('strict', %fi_a);
 
   my $fi_prepend = _param('prepend', %fi_a);
   unless (defined $fi_prepend) {
@@ -273,6 +274,7 @@ sub fill_in {
     $fi_eval_package = caller;
   }
 
+  my @fi_varlist;
   my $fi_install_package;
   if (defined $fi_varhash) {
     if (defined $fi_package) {
@@ -282,7 +284,11 @@ sub fill_in {
     } else {
       $fi_install_package = $fi_eval_package; # The gensymmed one
     }
-    _install_hash($fi_varhash => $fi_install_package);
+    @fi_varlist = _install_hash($fi_varhash => $fi_install_package);
+    if ($fi_strict) {
+      $fi_prepend = "use vars qw(@fi_varlist);$fi_prepend" if @fi_varlist;
+      $fi_prepend = "use strict;$fi_prepend";
+    }
   }
 
   if (defined $fi_package && defined $fi_safe) {
@@ -459,6 +465,7 @@ sub _install_hash {
     $hashlist = [$hashlist];
   }
   my $hash;
+  my @varlist;
   foreach $hash (@$hashlist) {
     my $name;
     foreach $name (keys %$hash) {
@@ -467,13 +474,23 @@ sub _install_hash {
       local *SYM = *{"$ {dest}::$name"};
       if (! defined $val) {
 	delete ${"$ {dest}::"}{$name};
+        my $match = qr/^.\Q$name\E$/;
+        @varlist = grep { $_ !~ $match } @varlist;
       } elsif (ref $val) {
 	*SYM = $val;
+        push @varlist, do {
+          if    (UNIVERSAL::isa($val, 'ARRAY')) { '@' }
+          elsif (UNIVERSAL::isa($val, 'HASH'))  { '%' }
+          else                                  { '$' }
+        } . $name;
       } else {
  	*SYM = \$val;
+        push @varlist, '$' . $name;
       }
     }
   }
+
+  @varlist;
 }
 
 sub TTerror { $ERROR }
@@ -1521,7 +1538,7 @@ been declared.  C<use strict> was implied, even though you did not
 write it explicitly, because the C<PREPEND> option added it for you
 automatically.
 
-There are two other ways to do this.  At the time you create the
+There are three other ways to do this.  At the time you create the
 template object with C<new>, you can also supply a C<PREPEND> option,
 in which case the statements will be prepended each time you fill in
 that template.  If the C<fill_in> call has its own C<PREPEND> option,
@@ -1533,6 +1550,33 @@ template.  Finally, you can make the class method call
 If you do this, then call calls to C<fill_in> for I<any> template will
 attach the perl statements to the beginning of each program fragment,
 except where overridden by C<PREPEND> options to C<new> or C<fill_in>.
+
+An alternative to adding "use strict;" to the PREPEND option, you can
+pass STRICT => 1 to fill_in when also passing the HASH option.
+
+Suppose that the C<fill_in> call included both
+
+	HASH => {$foo => ''} and
+	STRICT => 1
+
+options, and that the template looked like this:
+
+	{ 
+	  $foo = 14;
+	  ...
+	}
+
+	...
+
+	{ my $result = $boo + 12;    # $boo is misspelled and should be $foo
+	  ...
+	}
+
+The code in the second fragment would fail, because C<$boo> has not
+been declared. C<use strict> was implied, even though you did not
+write it explicitly, because the C<STRICT> option added it for you
+automatically. Any variable referenced in the template that is not in the
+C<HASH> option will be an error.
 
 =head2 Prepending in Derived Classes
 
