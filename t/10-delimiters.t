@@ -3,50 +3,45 @@
 # Tests for user-specified delimiter functions
 # These tests first appeared in version 1.20.
 
-use Text::Template;
+use strict;
+use warnings;
+use Test::More tests => 19;
 
-print "1..18\n";
-$n = 1;
+use_ok 'Text::Template' or exit 1;
 
 # (1) Try a simple delimiter: <<..>>
 # First with the delimiters specified at object creation time
-$V = $V = 119;
-$template = q{The value of $V is <<$V>>.};
-$result = q{The value of $V is 119.};
-$template1 = Text::Template->new(TYPE => STRING, 
+our $V = $V = 119;
+my $template = q{The value of $V is <<$V>>.};
+my $result = q{The value of $V is 119.};
+my $template1 = Text::Template->new(TYPE => 'STRING', 
 				 SOURCE => $template,
 				 DELIMITERS => ['<<', '>>']
 				)
   or die "Couldn't construct template object: $Text::Template::ERROR; aborting";
-$text = $template1->fill_in();
-print +($text eq $result ? '' : 'not '), "ok $n\n";
-$n++;
+my $text = $template1->fill_in();
+is $text, $result;
 
 # (2) Now with delimiter choice deferred until fill-in time.
-$template1 = Text::Template->new(TYPE => STRING, SOURCE => $template);
+$template1 = Text::Template->new(TYPE => 'STRING', SOURCE => $template);
 $text = $template1->fill_in(DELIMITERS => ['<<', '>>']);
-print +($text eq $result ? '' : 'not '), "ok $n\n";
-$n++;
+is $text, $result;
 
 # (3) Now we'll try using regex metacharacters
 # First with the delimiters specified at object creation time
 $template = q{The value of $V is [$V].};
-$template1 = Text::Template->new(TYPE => STRING, 
+$template1 = Text::Template->new(TYPE => 'STRING', 
 				 SOURCE => $template,
 				 DELIMITERS => ['[', ']']
 				)
   or die "Couldn't construct template object: $Text::Template::ERROR; aborting";
 $text = $template1->fill_in();
-print +($text eq $result ? '' : 'not '), "ok $n\n";
-$n++;
+is $text, $result;
 
 # (4) Now with delimiter choice deferred until fill-in time.
-$template1 = Text::Template->new(TYPE => STRING, SOURCE => $template);
+$template1 = Text::Template->new(TYPE => 'STRING', SOURCE => $template);
 $text = $template1->fill_in(DELIMITERS => ['[', ']']);
-print +($text eq $result ? '' : 'not '), "ok $n\n";
-$n++;
-
-
+is $text, $result;
 
 # (5-18) Make sure \ is working properly
 # (That is to say, it is ignored.)
@@ -71,23 +66,15 @@ my @tests = ('{""}' => '',	# (5)
 	     '{"\\x20\\}"}' => undef, # (18)
 	    );
 
-my $i;
-for ($i=0; $i<@tests; $i+=2) {
+while (my ($test, $result) = splice @tests, 0, 2) {
   my $tmpl = Text::Template->new(TYPE => 'STRING',
-				 SOURCE => $tests[$i],
+				 SOURCE => $test,
 				 DELIMITERS => ['{', '}'],
 				);
   my $text = $tmpl->fill_in;
-  my $result = $tests[$i+1];
+
   my $ok = (! defined $text && ! defined $result
 	    || $text eq $result);
-  unless ($ok) {
-    print STDERR "($n) expected .$result., got .$text.\n";
-  }
-  print +($ok ? '' : 'not '), "ok $n\n";
-  $n++;
+
+  ok($ok) or diag "expected .$result., got .$text.";
 }
-
-
-exit;
-

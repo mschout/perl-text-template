@@ -3,171 +3,119 @@
 # Tests of basic, essential functionality
 #
 
-use Text::Template;
+use strict;
+use warnings;
+use Test::More tests => 33;
+use Path::Tiny;
+
+my $tmpdir = Path::Tiny->tempdir;
+
+use_ok 'Text::Template' or exit 1;
+
 $X::v = $Y::v = 0;		# Suppress `var used only once'
 
-print "1..31\n";
-
-$n=1;
-
-$template_1 = <<EOM;
+my $template_1 = <<EOM;
 We will put value of \$v (which is "abc") here -> {\$v}
 We will evaluate 1+1 here -> {1 + 1}
 EOM
 
 # (1) Construct temporary template file for testing
 # file operations
-$TEMPFILE = "tt$$";
-open(TMP, "> $TEMPFILE") or print "not ok $n\n" && &abort("Couldn\'t write tempfile $TEMPFILE: $!");
-print TMP $template_1;
-close TMP;
-print "ok $n\n"; $n++;
+my $TEMPFILE = $tmpdir->child("tt$$")->stringify;
+
+eval {
+    open my $tmp, '>', $TEMPFILE or die "Couldn't write tempfile $TEMPFILE: $!";
+
+    print $tmp $template_1;
+    close $tmp;
+
+    pass;
+};
+if ($@) {
+    fail $@;
+}
 
 # (2) Build template from file
-$template = new Text::Template ('type' => 'FILE', 'source' => $TEMPFILE);
-if (defined($template)) {
-  print "ok $n\n";
-} else {
-  print "not ok $n $Text::Template::ERROR\n";
-}
-$n++;
+my $template = Text::Template->new('type' => 'FILE', 'source' => $TEMPFILE);
+ok (defined $template) or diag $Text::Template::ERROR;
 
 # (3) Fill in template from file
 $X::v = "abc";	
-$resultX = <<EOM;
+my $resultX = <<EOM;
 We will put value of \$v (which is "abc") here -> abc
 We will evaluate 1+1 here -> 2
 EOM
 $Y::v = "ABC";	
-$resultY = <<EOM;
+my $resultY = <<EOM;
 We will put value of \$v (which is "abc") here -> ABC
 We will evaluate 1+1 here -> 2
 EOM
 
-$text = $template->fill_in('package' => X);
-if ($text eq $resultX) {
-  print "ok $n\n";
-} else {
-  print "not ok $n\n";
-}
-$n++;
+my $text = $template->fill_in('package' => 'X');
+is $text, $resultX;
 
 # (4) Fill in same template again
-$text = $template->fill_in('package' => Y);
-if ($text eq $resultY) {
-  print "ok $n\n";
-} else {
-  print "not ok $n\n";
-}
-$n++;
-
-
+$text = $template->fill_in('package' => 'Y');
+is $text, $resultY;
 
 # (5) Simple test of `fill_this_in'
-$text = Text::Template->fill_this_in( $template_1, 'package' => X);
-if ($text eq $resultX) {
-  print "ok $n\n";
-} else {
-  print "not ok $n\n";
-}
-$n++;
+$text = Text::Template->fill_this_in( $template_1, 'package' => 'X');
+is $text, $resultX;
 
 # (6) test creation of template from filehandle
-if (open (TMPL, "< $TEMPFILE")) {
-  $template = new Text::Template ('type' => 'FILEHANDLE', 
-				  'source' => *TMPL);
-  if (defined($template)) {
-    print "ok $n\n";
-  } else {
-    print "not ok $n $Text::Template::ERROR\n";
-  }
-  $n++;
+open my $tmpl, '<', $TEMPFILE or die "failed to open $TEMPFILE: $!";
+
+$template = Text::Template->new(type => 'FILEHANDLE', source => $tmpl);
+ok defined $template or diag $Text::Template::ERROR;
 
 # (7) test filling in of template from filehandle
-  $text = $template->fill_in('package' => X);
-  if ($text eq $resultX) {
-    print "ok $n\n";
-  } else {
-    print "not ok $n\n";
-  }
-  $n++;
+$text = $template->fill_in('package' => 'X');
+is $text, $resultX;
 
 # (8) test second fill_in on same template object
-  $text = $template->fill_in('package' => Y);
-  if ($text eq $resultY) {
-    print "ok $n\n";
-  } else {
-    print "not ok $n\n";
-  }
-  $n++;
-  close TMPL;
-} else {
-  print "not ok $n\n";  $n++;
-  print "not ok $n\n";  $n++;
-  print "not ok $n\n";  $n++;
-}
+$text = $template->fill_in('package' => 'Y');
+is $text, $resultY;
 
+close $tmpl;
 
 # (9) test creation of template from array
-$template = new Text::Template 
-    ('type' => 'ARRAY', 
-     'source' => [ 
-		  'We will put value of $v (which is "abc") here -> {$v}',
-		  "\n",
-		  'We will evaluate 1+1 here -> {1+1}',
-		  "\n",
-		  ]);
-if (defined($template)) {
-  print "ok $n\n";
-} else {
-  print "not ok $n $Text::Template::ERROR\n";
-}
-$n++;
+$template = Text::Template->new(
+    type => 'ARRAY', 
+    source => [ 
+        'We will put value of $v (which is "abc") here -> {$v}',
+        "\n",
+        'We will evaluate 1+1 here -> {1+1}',
+        "\n",
+    ]
+);
+
+ok defined $template; # or diag $Text::Template::ERROR;
 
 # (10) test filling in of template from array
-$text = $template->fill_in('package' => X);
-if ($text eq $resultX) {
-  print "ok $n\n";
-} else {
-  print "not ok $n\n";
-}
-$n++;
+$text = $template->fill_in('package' => 'X');
+is $text, $resultX;
 
 # (11) test second fill_in on same array template object
-$text = $template->fill_in('package' => Y);
-if ($text eq $resultY) {
-  print "ok $n\n";
-} else {
-  print "not ok $n\n";
-  print STDERR "$resultX\n---\n$text";
-  unless (!defined($text)) { print STDERR "ERROR: $Text::Template::ERROR\n"};
-}
-$n++;
-
-
+$text = $template->fill_in('package' => 'Y');
+is $text, $resultY;
 
 # (12) Make sure \ is working properly
 # Test added for version 1.11
-my $tmpl = Text::Template->new(TYPE => 'STRING',
-			       SOURCE => 'B{"\\}"}C{"\\{"}D',
-			       );
+$tmpl = Text::Template->new(TYPE => 'STRING', SOURCE => 'B{"\\}"}C{"\\{"}D');
 # This should fail if the \ are not interpreted properly.
-my $text = $tmpl->fill_in();
-print +($text eq "B}C{D" ? '' : 'not '), "ok $n\n";
-$n++;
+$text = $tmpl->fill_in();
+is $text, 'B}C{D';
 
 # (13) Make sure \ is working properly
 # Test added for version 1.11
-$tmpl = Text::Template->new(TYPE => 'STRING',
-			    SOURCE => qq{A{"\t"}B},
-			   );
+$tmpl = Text::Template->new(TYPE => 'STRING', SOURCE => qq{A{"\t"}B});
+
 # Symptom of old problem:  ALL \ were special in templates, so
 # The lexer would return (A, PROGTEXT("t"), B), and the
 # result text would be AtB instead of A(tab)B.
 $text = $tmpl->fill_in();
 
-print +($text eq "A\tB" ? '' : 'not '), "ok $n\n";
-$n++;
+is $text, "A\tB";
 
 # (14-27) Make sure \ is working properly
 # Test added for version 1.11
@@ -188,81 +136,37 @@ my @tests = ('{""}' => '',	# (14)
 	     '{"\\x20\\}"}' => ' }', # (27)
 	    );
 
-my $i;
-for ($i=0; $i<@tests; $i+=2) {
-  my $tmpl = Text::Template->new(TYPE => 'STRING',
-				 SOURCE => $tests[$i],
-				);
+while (my ($test, $result) = splice @tests, 0, 2) {
+  my $tmpl = Text::Template->new(TYPE => 'STRING', SOURCE => $test);
   my $text = $tmpl->fill_in;
-  my $result = $tests[$i+1];
-  my $ok = (! defined $text && ! defined $result
-	    || $text eq $result);
-  unless ($ok) {
-    print STDERR "($n) expected .$result., got .$text.\n";
-  }
-  print +($ok ? '' : 'not '), "ok $n\n";
-  $n++;
+
+  ok (! defined $text && ! defined $result || $text eq $result)
+    or diag "expected .$result. got .$text.";
 }
 
 
 # (28-30) I discovered that you can't pass a glob ref as your filehandle.
 # MJD 20010827
 # (28) test creation of template from filehandle
-if (open (TMPL, "< $TEMPFILE")) {
-  $template = new Text::Template ('type' => 'FILEHANDLE', 
-				  'source' => \*TMPL);
-  if (defined($template)) {
-    print "ok $n\n";
-  } else {
-    print "not ok $n $Text::Template::ERROR\n";
-  }
-  $n++;
+$tmpl = undef;
+ok (open $tmpl, '<', $TEMPFILE) or diag "Couldn't open $TEMPFILE: $!";
+$template = Text::Template->new(type => 'FILEHANDLE', source => $tmpl);
+ok (defined $template) or diag $Text::Template::ERROR;
 
 # (29) test filling in of template from filehandle
-  $text = $template->fill_in('package' => X);
-  if ($text eq $resultX) {
-    print "ok $n\n";
-  } else {
-    print "not ok $n\n";
-  }
-  $n++;
+$text = $template->fill_in('package' => 'X');
+is $text, $resultX;
 
 # (30) test second fill_in on same template object
-  $text = $template->fill_in('package' => Y);
-  if ($text eq $resultY) {
-    print "ok $n\n";
-  } else {
-    print "not ok $n\n";
-  }
-  $n++;
-  close TMPL;
-} else {
-  print "not ok $n\n";  $n++;
-  print "not ok $n\n";  $n++;
-  print "not ok $n\n";  $n++;
-}
+$text = $template->fill_in('package' => 'Y');
+is $text, $resultY;
+
+close $tmpl;
 
 # (31) Test _scrubpkg for leakiness
 $Text::Template::GEN0::test = 1;
 Text::Template::_scrubpkg('Text::Template::GEN0');
-if ($Text::Template::GEN0::test
+ok !($Text::Template::GEN0::test
     || exists $Text::Template::GEN0::{test}
-    || exists $Text::Template::{'GEN0::'}) {
-  print "not ok $n\n";
-} else {
-  print "ok $n\n";
-}
-$n++;
+    || exists $Text::Template::{'GEN0::'});
 
-
-END {unlink $TEMPFILE;}
-
-exit;
-
-
-
-
-sub abort {
-  unlink $TEMPFILE;
-  die $_[0];
-}

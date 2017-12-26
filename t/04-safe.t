@@ -3,52 +3,48 @@
 # test apparatus for Text::Template module
 # still incomplete.
 
-use Text::Template;
+use strict;
+use warnings;
 
-BEGIN {
-  eval "use Safe";
-  if ($@) {
-    print "1..0\n";
-    exit 0;
-  }
+use Test::More;
+
+unless (eval { require Safe; 1 }) {
+    plan skip_all => 'Safe.pm is required for this test';
+}
+else {
+    plan tests => 20;
 }
 
-print "1..16\n";
+use_ok 'Text::Template' or exit 1;
 
+my ($BADOP, $FAILURE);
 if ($^O eq 'MacOS') {
   $BADOP = qq{};
   $FAILURE = q{};
-} else {
+}
+else {
   $BADOP = qq{kill 0};
   $FAILURE = q{Program fragment at line 1 delivered error ``kill trapped by operation mask''};
 }
 
-$n=1;
-$v = $v = 119;
+our $v = 119;
 
-$c = new Safe or die;
+my $c = Safe->new or die;
 
-$goodtemplate = q{This should succeed: { $v }};
-$goodoutput   = q{This should succeed: 119};
+my $goodtemplate = q{This should succeed: { $v }};
+my $goodoutput   = q{This should succeed: 119};
 
-$template1 = new Text::Template ('type' => 'STRING', 'source' => $goodtemplate)
-  or die;
-$template2 = new Text::Template ('type' => 'STRING', 'source' => $goodtemplate)
-  or die;
+my $template1 = Text::Template->new(type => 'STRING', source => $goodtemplate);
+my $template2 = Text::Template->new(type => 'STRING', source => $goodtemplate);
 
-$text1 = $template1->fill_in();
-$text2 = $template1->fill_in(SAFE => $c);
-$ERR2 = $@;
-$text3 = $template2->fill_in(SAFE => $c);
-$ERR3 = $@;
+my $text1 = $template1->fill_in();
+ok defined $text1;
 
-# (1)(2)(3) None of these should have failed.
-print +(defined $text1 ? '' : 'not '), "ok $n\n";
-$n++;
-print +(defined $text2 ? '' : 'not '), "ok $n\n";
-$n++;
-print +(defined $text3 ? '' : 'not '), "ok $n\n";
-$n++;
+my $text2 = $template1->fill_in(SAFE => $c);
+ok defined $text2;
+
+my $text3 = $template2->fill_in(SAFE => $c);
+ok defined $text3;
 
 # (4) Safe and non-safe fills of different template objects with the
 # same template text should yield the same result.
@@ -58,98 +54,80 @@ $n++;
 # We could alias the secret safe package to be identical to main,
 # but that wouldn't be safe.  If you want the aliasing, you have to
 # request it explicitly with `PACKAGE'.
-print "ok $n\n";
-$n++;
 
 # (5) Safe and non-safe fills of the same template object
 # should yield the same result.
 # (5) voided this test for the same reason as #4.
 # print +($text1 eq $text2 ? '' : 'not '), "ok $n\n";
-print "ok $n\n";
-$n++;
 
 # (6) Make sure the output was actually correct
-print +($text1 eq $goodoutput ? '' : 'not '), "ok $n\n";
-$n++;
+is $text1, $goodoutput;
 
 
-$badtemplate     = qq{This should fail: { $BADOP; 'NOFAIL' }};
-$badnosafeoutput = q{This should fail: NOFAIL};
-$badsafeoutput   = q{This should fail: Program fragment delivered error ``kill trapped by operation mask at template line 1.''};
+my $badtemplate     = qq{This should fail: { $BADOP; 'NOFAIL' }};
+my $badnosafeoutput = q{This should fail: NOFAIL};
+my $badsafeoutput   = q{This should fail: Program fragment delivered error ``kill trapped by operation mask at template line 1.''};
 
-$template1 = new Text::Template ('type' => 'STRING', 'source' => $badtemplate)
-  or die;
-$template2 = new Text::Template ('type' => 'STRING', 'source' => $badtemplate)
-  or die;
+$template1 = Text::Template->new('type' => 'STRING', 'source' => $badtemplate);
+isa_ok $template1, 'Text::Template';
 
+$template2 = Text::Template->new('type' => 'STRING', 'source' => $badtemplate);
+isa_ok $template2, 'Text::Template';
+
+# none of these should fail
 $text1 = $template1->fill_in();
-$text2 = $template1->fill_in(SAFE => $c);
-$ERR2 = $@;
-$text3 = $template2->fill_in(SAFE => $c);
-$ERR3 = $@;
-$text4 = $template1->fill_in();
+ok defined $text1;
 
-# (7)(8)(9)(10) None of these should have failed.
-print +(defined $text1 ? '' : 'not '), "ok $n\n";
-$n++;
-print +(defined $text2 ? '' : 'not '), "ok $n\n";
-$n++;
-print +(defined $text3 ? '' : 'not '), "ok $n\n";
-$n++;
-print +(defined $text4 ? '' : 'not '), "ok $n\n";
-$n++;
+$text2 = $template1->fill_in(SAFE => $c);
+ok defined $text2;
+
+$text3 = $template2->fill_in(SAFE => $c);
+ok defined $text3;
+
+my $text4 = $template1->fill_in();
+ok defined $text4;
 
 # (11) text1 and text4 should be the same (using safe in between
 # didn't change anything.)
-print +($text1 eq $text4 ? '' : 'not '), "ok $n\n";
-$n++;
+is $text1, $text4;
 
 # (12) text2 and text3 should be the same (same template text in different
 # objects
-print +($text2 eq $text3 ? '' : 'not '), "ok $n\n";
-$n++;
+is $text2, $text3;
 
 # (13) text1 should yield badnosafeoutput
-print +($text1 eq $badnosafeoutput ? '' : 'not '), "ok $n\n";
-$n++;
+is $text1, $badnosafeoutput;
 
 # (14) text2 should yield badsafeoutput
 $text2 =~ s/'kill'/kill/;  # 5.8.1 added quote marks around the op name
-print "# expected: <$badsafeoutput>\n# got     : <$text2>\n";
-print +($text2 eq $badsafeoutput ? '' : 'not '), "ok $n\n";
-$n++;
+is $text2, $badsafeoutput;
 
+my $template = q{{$x=1}{$x+1}};
 
-$template = q{{$x=1}{$x+1}};
+$template1 = Text::Template->new('type' => 'STRING', 'source' => $template);
+isa_ok $template1, 'Text::Template';
 
-$template1 = new Text::Template ('type' => 'STRING', 'source' => $template)
-  or die;
-$template2 = new Text::Template ('type' => 'STRING', 'source' => $template)
-  or die;
+$template2 = Text::Template->new('type' => 'STRING', 'source' => $template);
+isa_ok $template2, 'Text::Template';
 
 $text1 = $template1->fill_in();
-$text2 = $template1->fill_in(SAFE => new Safe);
+$text2 = $template1->fill_in(SAFE => Safe->new);
 
 # (15) Do effects persist in safe compartments?
-print +($text1 eq $text2 ? '' : 'not '), "ok $n\n";
-$n++;
+is $text1, $text2;
 
 # (16) Try the BROKEN routine in safe compartments
 sub my_broken { 
   my %a = @_; $a{error} =~ s/ at.*//s;
   "OK! text:$a{text} error:$a{error} lineno:$a{lineno} arg:$a{arg}" ;
 }
-$templateB = new Text::Template (TYPE => 'STRING', SOURCE => '{die}')
-    or die;
+
+my $templateB = Text::Template->new(TYPE => 'STRING', SOURCE => '{die}');
+isa_ok $templateB, 'Text::Template';
+
 $text1 = $templateB->fill_in(BROKEN => \&my_broken, 
 			     BROKEN_ARG => 'barg',
-			     SAFE => new Safe,
-			     );
-$result1 = qq{OK! text:die error:Died lineno:1 arg:barg};
-print +($text1 eq $result1 ? '' : 'not '), "ok $n\n";
-$n++;
+			     SAFE => Safe->new);
 
-
-
-exit;
-
+my $result1 = qq{OK! text:die error:Died lineno:1 arg:barg};
+is $text1, $result1;

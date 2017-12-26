@@ -2,37 +2,36 @@
 #
 # test apparatus for Text::Template module
 
-use Text::Template;
+use strict;
+use warnings;
+use Test::More;
 
-BEGIN {
-  eval "use Safe";
-  if ($@) {
-    print "1..0\n";
-    exit 0;
-  }
+unless (eval { require Safe; 1 }) {
+    plan skip_all => 'Safe.pm is required for this test';
+}
+else {
+    plan tests => 4;
 }
 
-print "1..3\n";
-
-$n=1;
+use_ok 'Text::Template' or exit 1;
 
 # Test the OUT feature with safe compartments
 
-$template = q{
+my $template = q{
 This line should have a 3: {1+2}
 
 This line should have several numbers:
 { $t = ''; foreach $n (1 .. 20) { $t .= $n . ' ' } $t }
 };
 
-$templateOUT = q{
+my $templateOUT = q{
 This line should have a 3: { $OUT = 1+2 }
 
 This line should have several numbers:
 { foreach $n (1 .. 20) { $OUT .= $n . ' ' } }
 };
 
-$c = new Safe;
+my $c = new Safe;
 
 # Build templates from string
 $template = new Text::Template ('type' => 'STRING', 'source' => $template,
@@ -43,14 +42,13 @@ $templateOUT = new Text::Template ('type' => 'STRING', 'source' => $templateOUT,
   or die;
 
 # Fill in templates
-$text = $template->fill_in()
+my $text = $template->fill_in()
   or die;
-$textOUT = $templateOUT->fill_in()
+my $textOUT = $templateOUT->fill_in()
   or die;
 
 # (1) They should be the same
-print +($text eq $textOUT ? '' : 'not '), "ok $n\n";
-$n++;
+is $text, $textOUT;
 
 # (2-3)  "Joel Appelbaum" <joel@orbz.com> <000701c0ac2c$aed1d6e0$0201a8c0@prime>
 # "Contrary to the documentation the $OUT variable is not always
@@ -68,18 +66,11 @@ $n++;
   my $expected = "xyz";
   my $s = Safe->new;
   my $o = Text::Template->new(type => 'string',
-                              source => $template,
-                             );
+                              source => $template);
+
   for (1..2) {
     my $r = $o->fill_in(SAFE => $s);
-    if ($r ne $expected) {
-      print "not ok $n # <$r>\n";
-    } else {
-      print "ok $n\n";
-    }
-    $n++;
+
+    is $r, $expected;
   }
 }
-
-exit;
-

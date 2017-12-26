@@ -3,31 +3,30 @@
 # test apparatus for Text::Template module
 # still incomplete.
 
-use Text::Template;
+use strict;
+use warnings;
+use Test::More tests => 3;
 
-print "1..2\n";
+use_ok 'Text::Template' or exit 1;
 
-$n=1;
+my $template = new Text::Template TYPE => 'STRING', SOURCE => q{My process ID is {$$}};
 
-$template = new Text::Template TYPE => STRING, SOURCE => q{My process ID is {$$}};
-$of = "t$$";
+my $of = "t$$";
 END { unlink $of }
-open O, "> $of" or die;
+open my $ofh, '>', $of or die "open($of): $!";
 
-$text = $template->fill_in(OUTPUT => \*O);
+my $text = $template->fill_in(OUTPUT => $ofh);
 
 # (1) No $text should have been constructed.  Return value should be true.
-print +($text eq '1' ? '' : 'not '), "ok $n\n";
-$n++;
+is $text, '1';
 
-close O or die;
-open I, "< $of" or die;
-{ local $/; $t = <I> }
-close I;
+close $ofh or die "close(): $!";
+
+open my $ifh, '<', $of or die "open($of): $!";
+
+my $t;
+{ local $/; $t = <$ifh> }
+close $ifh;
 
 # (2) The text should have been printed to the file
-print +($t eq "My process ID is $$" ? '' : 'not '), "ok $n\n";
-$n++;
-
-exit;
-
+is $t, "My process ID is $$";

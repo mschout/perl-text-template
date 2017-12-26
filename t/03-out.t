@@ -4,20 +4,20 @@
 # still incomplete.
 #
 
-use Text::Template;
+use strict;
+use warnings;
+use Test::More tests => 4;
 
-print "1..1\n";
+use_ok 'Text::Template' or exit 1;
 
-$n=1;
-
-$template = q{
+my $templateIN = q{
 This line should have a 3: {1+2}
 
 This line should have several numbers:
 { $t = ''; foreach $n (1 .. 20) { $t .= $n . ' ' } $t }
 };
 
-$templateOUT = q{
+my $templateOUT = q{
 This line should have a 3: { $OUT = 1+2 }
 
 This line should have several numbers:
@@ -25,20 +25,18 @@ This line should have several numbers:
 };
 
 # Build templates from string
-$template = new Text::Template ('type' => 'STRING', 'source' => $template)
-  or die;
-$templateOUT = new Text::Template ('type' => 'STRING', 'source' => $templateOUT)
-  or die;
+my $template = Text::Template->new('type' => 'STRING', 'source' => $templateIN);
+isa_ok $template, 'Text::Template';
+
+$templateOUT = Text::Template->new('type' => 'STRING', 'source' => $templateOUT);
+isa_ok $templateOUT, 'Text::Template';
 
 # Fill in templates
-$text = $template->fill_in()
-  or die;
-$textOUT = $templateOUT->fill_in()
-  or die;
+my $text = $template->fill_in();
+my $textOUT = $templateOUT->fill_in();
 
 # (1) They should be the same
-print +($text eq $textOUT ? '' : 'not '), "ok $n\n";
-$n++;
+is $text, $textOUT;
 
 # Missing:  Test this feature in Safe compartments; 
 # it's a totally different code path.

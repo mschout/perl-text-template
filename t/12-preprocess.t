@@ -3,12 +3,13 @@
 # Tests for PREPROCESSOR features
 # These tests first appeared in version 1.25.
 
-use Text::Template::Preprocess;
+use strict;
+use warnings;
+use Test::More tests => 9;
 
-$TMPFILE = "tt$$";
+use_ok 'Text::Template::Preprocess' or exit 1;
 
-print "1..8\n";
-my $n = 1;
+my $TMPFILE = "tt$$";
 
 my $py = sub { tr/x/y/ };
 my $pz = sub { tr/x/z/ };
@@ -21,7 +22,7 @@ open TF, "> $TMPFILE" or die "Couldn't open test file: $!; aborting";
 print TF $t;
 close TF;
 
-@result = ($outx, $outy, $outz, $outz);
+my @result = ($outx, $outy, $outz, $outz);
 for my $trial (1, 0) {
   for my $test (0 .. 3) {
     my $tmpl;
@@ -37,9 +38,7 @@ for my $trial (1, 0) {
     my @args = ((($test & 2) == 2) ? (PREPROCESSOR => $pz) : ());
     my $o = $tmpl->fill_in(@args, 
 			   HASH => {x => 119, 'y' => 23, z => 5});
-#    print STDERR "$o/$result[$test]\n";
-    print +(($o eq $result[$test]) ? '' : 'not '), "ok $n\n";
-    $n++;
+    is $o, $result[$test];
   }
 }
 

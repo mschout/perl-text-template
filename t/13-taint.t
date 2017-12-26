@@ -1,8 +1,12 @@
 #!perl -T
 # Tests for taint-mode features
 
+use strict;
+use warnings;
 use lib 'blib/lib';
-use Text::Template;
+use Test::More tests => 21;
+
+use_ok 'Text::Template' or exit 1;
 
 my $r = int(rand(10000));
 my $file = "tt$r";
@@ -15,11 +19,6 @@ sub taint {
 }
 
 
-print "1..21\n";
-
-my $n =1;
-print "ok ", $n++, "\n";
-
 my $template = 'The value of $n is {$n}.';
 
 open T, "> $file" or die "Couldn't write temporary file $file: $!";
@@ -30,36 +29,28 @@ sub should_fail {
   my $obj = Text::Template->new(@_);
   eval {$obj->fill_in()};
   if ($@) {
-    print "ok $n # $@\n";
+    pass $@;
   } else {
-    print "not ok $n # (didn't fail)\n";
+    fail q[didn't fail];
   }
-  $n++;
 }
 
 sub should_work {
   my $obj = Text::Template->new(@_);
   eval {$obj->fill_in()};
   if ($@) {
-    print "not ok $n # $@\n";
+    fail $@;
   } else {
-    print "ok $n\n";
+    pass;
   }
-  $n++;
 }
 
 sub should_be_tainted {
-  if (Text::Template::_is_clean($_[0])) {
-    print "not ok $n\n"; $n++; return;
-  }
-  print "ok $n\n"; $n++; return; 
+  ok !Text::Template::_is_clean($_[0]);
 }
 
 sub should_be_clean {
-  unless (Text::Template::_is_clean($_[0])) {
-    print "not ok $n\n"; $n++; return;
-  }
-  print "ok $n\n"; $n++; return; 
+  ok Text::Template::_is_clean($_[0]);
 }
 
 # Tainted filename should die with and without UNTAINT option

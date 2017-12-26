@@ -3,55 +3,51 @@
 # test apparatus for Text::Template module
 # still incomplete.
 
-use Text::Template;
+use strict;
+use warnings;
+use Test::More tests => 6;
 
-print "1..5\n";
-$n = 1;
+use_ok 'Text::Template' or exit 1;
 
 # (1-2) Missing source
 eval {
   Text::Template->new();
+  pass;
 };
 unless ($@ =~ /^\QUsage: Text::Template::new(TYPE => ..., SOURCE => ...)/) {
-  print STDERR $@;
-  print "not ";
+  diag $@;
+  fail;
 }
-print "ok $n\n";
-$n++;
+else {
+  pass;
+}
 
 eval {
   Text::Template->new(TYPE => 'FILE');
 };
 if ($@ =~ /^\QUsage: Text::Template::new(TYPE => ..., SOURCE => ...)/) {
-  print "ok $n\n";
-} else {
-  print STDERR $@;
-  print "not ok $n\n";
+  pass;
 }
-$n++;
+else {
+  diag $@;
+  fail;
+}
 
 # (3) Invalid type
 eval {
   Text::Template->new(TYPE => 'wlunch', SOURCE => 'fish food');
 };
 if ($@ =~ /^\QIllegal value `WLUNCH' for TYPE parameter/) {
-  print "ok $n\n";
-} else {
-  print STDERR $@;
-  print "not ok $n\n";
+  pass;
 }
-$n++;
+else {
+  diag $@;
+  fail;
+}
 
 # (4-5) File does not exist
 my $o = Text::Template->new(TYPE => 'file', 
                             SOURCE => 'this file does not exist');
-print $o ? "not ok $n\n" : "ok $n\n";
-$n++;
-print defined($Text::Template::ERROR) 
-      && $Text::Template::ERROR =~ /^Couldn't open file/
-  ? "ok $n\n" : "not ok $n\n";
-$n++;
+ok !defined $o;
 
-
-exit;
-
+ok defined($Text::Template::ERROR) && $Text::Template::ERROR =~ /^Couldn't open file/;
