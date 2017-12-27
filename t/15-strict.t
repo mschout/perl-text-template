@@ -3,8 +3,11 @@
 # Tests for STRICT features
 # These tests first appeared in version 1.48.
 
-use Text::Template;
-use Test::Simple tests => 3;
+use strict;
+use warnings;
+use Test::More tests => 4;
+
+use_ok 'Text::Template' or exit 1;
 
 @Emptyclass1::ISA = 'Text::Template';
 @Emptyclass2::ISA = 'Text::Template';
@@ -36,7 +39,6 @@ my $t2 = $tmpl2->fill_in(PACKAGE => 'T2', HASH => {bar => 'baz'});
 # prepend overrides the hash values
 my $t3 = $tmpl2->fill_in(PREPEND => q{$foo = "fillin"}, PACKAGE => 'T3', STRICT => 1, HASH => {foo => 'hashval2'});
 
-ok ($t1 =~ /did you forget to declare "my \$foo"/, "got expected error message");
-ok ($t2 eq 'The value of $foo is: template', "non-strict hash still works");
-ok ($t3 eq "The value of \$foo is: fillin", "hash values with prepend, prepend wins, even under strict.");
-
+like $t1, qr/Global symbol "\$foo" requires explicit package/;
+is $t2, 'The value of $foo is: template', "non-strict hash still works";
+is $t3, "The value of \$foo is: fillin", "hash values with prepend, prepend wins, even under strict.";
