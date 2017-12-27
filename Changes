@@ -7,6 +7,10 @@ Revision history for Text::Template
     - remove $VERSION checks from tests. This makes it easier to run the test
       with Dist::Zilla and avoids maintenance issue of updating the tests for
       each release (Thanks Andrew Ruder).
+    - Tests cleanup: use strict + warnings, and use Test::More to generate TAP
+      output rather than generating it by hand
+    - Allow precompiled templates to work with preprocessing [#29928] (Thanks
+      Nik LaBelle)
 
 1.47  2017-02-27
     - Fix longstanding memory leak in _scrubpkg() [#22031]
