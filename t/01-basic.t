@@ -6,9 +6,10 @@
 use strict;
 use warnings;
 use Test::More tests => 33;
-use Path::Tiny;
+use File::Spec::Functions qw(catfile);
+use File::Temp;
 
-my $tmpdir = Path::Tiny->tempdir;
+my $tmpdir = File::Temp->newdir;
 
 use_ok 'Text::Template' or exit 1;
 
@@ -21,7 +22,7 @@ EOM
 
 # (1) Construct temporary template file for testing
 # file operations
-my $TEMPFILE = $tmpdir->child("tt$$")->stringify;
+my $TEMPFILE = catfile($tmpdir, "tt$$");
 
 eval {
     open my $tmp, '>', $TEMPFILE or die "Couldn't write tempfile $TEMPFILE: $!";
