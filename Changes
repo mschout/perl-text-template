@@ -11,6 +11,10 @@ Revision history for Text::Template
       output rather than generating it by hand
     - Allow precompiled templates to work with preprocessing [#29928] (Thanks
       Nik LaBelle)
+    - Add "strict" option to fill_in().  This adds "use strict" and "use vars
+      (...)" to the prepend section, and only the keys of the HASH option are
+      allowed in the template.  (Thanks Desmond Daignault, Kivanc Yazan, CJM)
+      [55696]
 
 1.47  2017-02-27
     - Fix longstanding memory leak in _scrubpkg() [#22031]
