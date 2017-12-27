@@ -132,10 +132,10 @@ sub source {
 }
 
 sub set_source_data {
-  my ($self, $newdata) = @_;
+  my ($self, $newdata, $type) = @_;
   $self->{SOURCE} = $newdata;
   $self->{DATA_ACQUIRED} = 1;
-  $self->{TYPE} = 'STRING';
+  $self->{TYPE} = $type || 'STRING';
   1;
 }
 

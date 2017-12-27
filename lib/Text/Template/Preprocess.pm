@@ -15,10 +15,11 @@ sub fill_in {
   my $pp = $args{PREPROCESSOR} || $self->{PREPROCESSOR} ;
   if ($pp) {
     local $_ = $self->source();
+    my $type = $self->{TYPE};
 #    print "# fill_in: before <$_>\n";
     &$pp;
 #    print "# fill_in: after <$_>\n";
-    $self->set_source_data($_);
+    $self->set_source_data($_, $type);
   }
   $self->SUPER::fill_in(@_);
 }
