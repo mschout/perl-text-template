@@ -14,32 +14,15 @@ eval {
     Text::Template->new();
     pass;
 };
-unless ($@ =~ /^\QUsage: Text::Template::new(TYPE => ..., SOURCE => ...)/) {
-    diag $@;
-    fail;
-}
-else {
-    pass;
-}
+
+like $@, qr/^\QUsage: Text::Template::new(TYPE => ..., SOURCE => ...)/;
 
 eval { Text::Template->new(TYPE => 'FILE'); };
-if ($@ =~ /^\QUsage: Text::Template::new(TYPE => ..., SOURCE => ...)/) {
-    pass;
-}
-else {
-    diag $@;
-    fail;
-}
+like $@, qr/^\QUsage: Text::Template::new(TYPE => ..., SOURCE => ...)/;
 
 # (3) Invalid type
 eval { Text::Template->new(TYPE => 'wlunch', SOURCE => 'fish food'); };
-if ($@ =~ /^\QIllegal value `WLUNCH' for TYPE parameter/) {
-    pass;
-}
-else {
-    diag $@;
-    fail;
-}
+like $@, qr/^\QIllegal value `WLUNCH' for TYPE parameter/;
 
 # (4-5) File does not exist
 my $o = Text::Template->new(
