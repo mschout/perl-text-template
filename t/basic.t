@@ -5,7 +5,7 @@
 
 use strict;
 use warnings;
-use Test::More tests => 33;
+use Test::More tests => 34;
 use File::Temp;
 
 my $tmpfile = File::Temp->new;
@@ -170,3 +170,10 @@ ok !($Text::Template::GEN0::test
     || exists $Text::Template::GEN0::{test}
     || exists $Text::Template::{'GEN0::'});
 
+# that filename parameter works. we use BROKEN to verify this
+$text = Text::Template->new(
+    TYPE   => 'string',
+    SOURCE => 'Hello {1/0}'
+)->fill_in(FILENAME => 'foo.txt');
+
+like $text, qr/division by zero at foo\.txt line 1/;

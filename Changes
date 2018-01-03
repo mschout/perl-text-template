@@ -23,6 +23,7 @@ Revision history for Text::Template
     - Minimum perl version is now 5.8.0
     - Allow start/end delimiters to be identical (e.g.: @@foo@@, XXfooXX)
       (Thanks mirod) [46639]
+    - Fix + document the FILENAME parameter to fill_in() (Thanks VDB) [106093]
     - Test suite cleanups:
         + turn on strict/warnings for all tests
         + run tests through perltidy and formatting cleanup

@@ -297,9 +297,9 @@ sub fill_in {
     my $fi_broken_arg = _param('broken_arg', %fi_a) || [];
     my $fi_safe       = _param('safe',       %fi_a);
     my $fi_ofh        = _param('output',     %fi_a);
-    my $fi_filename   = _param('filename') || $fi_self->{FILENAME} || 'template';
-    my $fi_strict     = _param('strict', %fi_a);
-    my $fi_prepend    = _param('prepend', %fi_a);
+    my $fi_filename   = _param('filename',   %fi_a) || $fi_self->{FILENAME} || 'template';
+    my $fi_strict     = _param('strict',     %fi_a);
+    my $fi_prepend    = _param('prepend',    %fi_a);
 
     my $fi_eval_package;
     my $fi_scrub_package = 0;
@@ -1000,7 +1000,7 @@ may yield spurious warnings about
 so you might like to avoid them and use the capitalized versions.
 
 At present, there are eight legal options:  C<PACKAGE>, C<BROKEN>,
-C<BROKEN_ARG>, C<SAFE>, C<HASH>, C<OUTPUT>, and C<DELIMITERS>.
+C<BROKEN_ARG>, C<FILENAME>, C<SAFE>, C<HASH>, C<OUTPUT>, and C<DELIMITERS>.
 
 =over 4
 
@@ -1279,6 +1279,29 @@ which is a reference to C<$error>.  C<my_broken> can store an error
 message into C<$error> this way.  Then the function that called
 C<fill_in> can see if C<my_broken> has left an error message for it
 to find, and proceed accordingly.
+
+=item C<FILENAME>
+
+If you give C<fill_in> a C<FILENAME> option, then this is the file name that
+you loaded the template source from.  This only affects the error message that
+is given for template errors.  If you loaded the template from C<foo.txt> for
+example, and pass C<foo.txt> as the C<FILENAME> parameter, errors will look
+like C<... at foo.txt line N> rather than C<... at template line N>. 
+
+Note that this does NOT have anything to do with loading a template from the
+given filename.  See C<fill_in_file()> for that.
+
+For example:
+
+ my $template = Text::Template->new(
+     TYPE   => 'string',
+     SOURCE => 'The value is {1/0}');
+
+ $template->fill_in(FILENAME => 'foo.txt') or die $Text::Template::ERROR;
+
+will die with an error that contains
+
+ Illegal division by zero at at foo.txt line 1
 
 =item C<SAFE>
 
