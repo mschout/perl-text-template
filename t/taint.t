@@ -20,9 +20,9 @@ sub taint {
 
 my $template = 'The value of $n is {$n}.';
 
-open T, "> $file" or die "Couldn't write temporary file $file: $!";
-print T $template, "\n";
-close T or die "Couldn't finish temporary file $file: $!";
+open my $fh, '>', $file or die "Couldn't write temporary file $file: $!";
+print $fh $template, "\n";
+close $fh or die "Couldn't finish temporary file $file: $!";
 
 sub should_fail {
     my $obj = Text::Template->new(@_);
@@ -70,12 +70,13 @@ should_fail TYPE => 'file', SOURCE => $file;
 should_work TYPE => 'file', SOURCE => $file, UNTAINT => 1;
 
 # (8-9)
-open H, "< $file" or die "Couldn't open $file for reading: $!; aborting";
-should_fail TYPE => 'filehandle', SOURCE => \*H;
-close H;
-open H, "< $file" or die "Couldn't open $file for reading: $!; aborting";
-should_work TYPE => 'filehandle', SOURCE => \*H, UNTAINT => 1;
-close H;
+open $fh, '<', $file or die "Couldn't open $file for reading: $!; aborting";
+should_fail TYPE => 'filehandle', SOURCE => $fh;
+close $fh;
+
+open $fh, '<', $file or die "Couldn't open $file for reading: $!; aborting";
+should_work TYPE => 'filehandle', SOURCE => $fh, UNTAINT => 1;
+close $fh;
 
 # (10-15)
 my $ttemplate = $template;

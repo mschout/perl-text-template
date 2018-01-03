@@ -18,20 +18,20 @@ my $t    = 'xxx The value of $x is {$x}';
 my $outx = 'xxx The value of $x is 119';
 my $outy = 'yyy The value of $y is 23';
 my $outz = 'zzz The value of $z is 5';
-open TF, "> $TMPFILE" or die "Couldn't open test file: $!; aborting";
-print TF $t;
-close TF;
+open my $tfh, '>', $TMPFILE or die "Couldn't open test file: $!; aborting";
+print $tfh $t;
+close $tfh;
 
 my @result = ($outx, $outy, $outz, $outz);
 for my $trial (1, 0) {
     for my $test (0 .. 3) {
         my $tmpl;
         if ($trial == 0) {
-            $tmpl = new Text::Template::Preprocess(TYPE => 'STRING', SOURCE => $t) or die;
+            $tmpl = Text::Template::Preprocess->new(TYPE => 'STRING', SOURCE => $t) or die;
         }
         else {
-            open TF, "< $TMPFILE" or die "Couldn't open test file: $!; aborting";
-            $tmpl = new Text::Template::Preprocess(TYPE => 'FILEHANDLE', SOURCE => \*TF) or die;
+            open $tfh, '<', $TMPFILE or die "Couldn't open test file: $!; aborting";
+            $tmpl = Text::Template::Preprocess->new(TYPE => 'FILEHANDLE', SOURCE => $tfh) or die;
         }
         $tmpl->preprocessor($py) if ($test & 1) == 1;
         my @args = ((($test & 2) == 2) ? (PREPROCESSOR => $pz) : ());

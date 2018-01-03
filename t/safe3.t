@@ -31,15 +31,15 @@ This line should have several numbers:
 { foreach $n (1 .. 20) { $OUT .= $n . ' ' } }
 };
 
-my $c = new Safe;
+my $c = Safe->new;
 
 # Build templates from string
-$template = new Text::Template(
+$template = Text::Template->new(
     type   => 'STRING',
     source => $template,
     SAFE   => $c) or die;
 
-$templateOUT = new Text::Template(
+$templateOUT = Text::Template->new(
     type   => 'STRING',
     source => $templateOUT,
     SAFE    => $c) or die;

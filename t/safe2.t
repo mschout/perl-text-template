@@ -16,7 +16,7 @@ else {
 
 use_ok 'Text::Template' or exit 1;
 
-my $c = new Safe or die;
+my $c = Safe->new or die;
 
 # Test handling of packages and importing.
 $c->reval('$P = "safe root"');
@@ -25,9 +25,9 @@ $Q::P = $Q::P = 'Q';
 
 # How to effectively test the gensymming?
 
-my $t = new Text::Template
+my $t = Text::Template->new(
     TYPE   => 'STRING',
-    SOURCE => 'package is {$P}' or die;
+    SOURCE => 'package is {$P}') or die;
 
 # (1) Default behavior: Inherit from calling package, `main' in this case.
 my $text = $t->fill_in();
@@ -48,9 +48,9 @@ $text = $t->fill_in(SAFE => $c, PACKAGE => 'Q');
 is $text, 'package is Q';
 
 # Now let's see if hash vars are installed properly into safe templates
-$t = new Text::Template
+$t = Text::Template->new(
     TYPE   => 'STRING',
-    SOURCE => 'hash is {$H}' or die;
+    SOURCE => 'hash is {$H}') or die;
 
 # (5) First in default mode
 $text = $t->fill_in(HASH => { H => 'good5' });

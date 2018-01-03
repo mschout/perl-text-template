@@ -19,18 +19,18 @@ is $out, 'The value of $n is 119.';
 
 # (2) Test fill_in_file
 my $TEMPFILE = "tt$$";
-open F, "> $TEMPFILE" or die "Couldn't open test file: $!; aborting";
-print F 'The value of $n is {$n}.', "\n";
-close F or die "Couldn't write test file: $!; aborting";
+open my $ofh, '>', $TEMPFILE or die "Couldn't open test file: $!; aborting";
+print $ofh 'The value of $n is {$n}.', "\n";
+close $ofh or die "Couldn't write test file: $!; aborting";
 $R::n = $R::n = 8128;
 
 $out = fill_in_file($TEMPFILE, PACKAGE => 'R');
 is $out, "The value of \$n is 8128.\n";
 
 # (3) Jonathan Roy reported this bug:
-open F, "> $TEMPFILE" or die "Couldn't open test file: $!; aborting";
-print F "With a message here? [% \$var %]\n";
-close F or die "Couldn't close test file: $!; aborting";
+open $ofh, '>', $TEMPFILE or die "Couldn't open test file: $!; aborting";
+print $ofh "With a message here? [% \$var %]\n";
+close $ofh or die "Couldn't close test file: $!; aborting";
 $out = fill_in_file($TEMPFILE,
     DELIMITERS => [ '[%', '%]' ],
     HASH => { "var" => \"It is good!" });
