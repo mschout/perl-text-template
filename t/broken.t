@@ -3,7 +3,7 @@
 
 use strict;
 use warnings;
-use Test::More tests => 6;
+use Test::More tests => 7;
 
 use_ok 'Text::Template' or exit 1;
 
@@ -55,4 +55,12 @@ use_ok 'Text::Template' or exit 1;
             qq{$a{lineno},$a{error},$a{text}};
         });
     is $r, qq{1,Illegal division by zero at template line 1.\n,1/0};
+}
+
+# BROKEN sub handles undef
+{
+    my $r = Text::Template->new(TYPE => 'string', SOURCE => 'abc{1/0}defg')
+        ->fill_in(BROKEN => sub { undef });
+
+    is $r, 'abc';
 }

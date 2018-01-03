@@ -17,6 +17,8 @@ Revision history for Text::Template
       < 5.18 [34292]
     - dont use bareword filehandles
     - use three arg form of open()
+    - fix BROKEN behaviour so that it returns the text accumulated so far on
+      undef as documented [28974]
     - Test suite cleanups:
         + turn on strict/warnings for all tests
         + run tests through perltidy and formatting cleanup

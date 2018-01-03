@@ -386,7 +386,7 @@ sub fill_in {
                         type   => $fi_type,);
                 }
                 else {
-                    return $fi_res;    # Undefined means abort processing
+                    return $fi_r;    # Undefined means abort processing
                 }
             }
             else {
