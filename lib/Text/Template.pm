@@ -205,7 +205,7 @@ sub compile {
 
         next if $t eq '';
 
-        if ($t eq $t_open) {    # Brace or other opening delimiter
+        if ($t eq $t_open && (!defined $delim_pats || $state eq 'TEXT')) {    # Brace or other opening delimiter
             if ($depth == 0) {
                 push @content, [ $state, $cur_item, $lineno ] if $cur_item ne '';
                 $cur_item   = '';
