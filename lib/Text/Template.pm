@@ -314,7 +314,7 @@ sub fill_in {
       no strict;
       my $fi_lcomment = "#line $fi_lineno $fi_filename";
       my $fi_progtext = 
-        "package $fi_eval_package; $fi_prepend;\n$fi_lcomment\n$fi_text;";
+        "package $fi_eval_package; $fi_prepend;\n$fi_lcomment\n$fi_text\n;";
       my $fi_res;
       my $fi_eval_err = '';
       if ($fi_safe) {
