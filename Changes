@@ -15,9 +15,9 @@ Revision history for Text::Template
       [55696]
     - Fix templates with inline comments without newline after comment for perl
       < 5.18 [34292]
-    - dont use bareword filehandles
+    - Don't use bareword file handles
     - use three arg form of open()
-    - fix BROKEN behaviour so that it returns the text accumulated so far on
+    - Fix BROKEN behaviour so that it returns the text accumulated so far on
       undef as documented [28974]
     - Source code cleanups
     - Minimum perl version is now 5.8.0
@@ -27,8 +27,8 @@ Revision history for Text::Template
         + remove number prefixes from test names
         + use Test::More instead of generating TAP by hand
         + use three-arg form of open()
-        + dont use indrect object syntax
-        + dont use bareword filehandles
+        + don't use indirect object syntax
+        + don't use bareword file handles
 
 1.47  2017-02-27
     - Fix longstanding memory leak in _scrubpkg() [#22031]
