@@ -13,13 +13,15 @@ package Text::Template;
 
 # ABSTRACT: Expand template text with embedded Perl
 
-require 5.004;
-use Exporter;
-@ISA       = qw(Exporter);
-@EXPORT_OK = qw(fill_in_file fill_in_string TTerror);
-use vars '$ERROR';
 use strict;
 use warnings;
+
+require 5.008;
+
+use base 'Exporter';
+
+our @EXPORT_OK = qw(fill_in_file fill_in_string TTerror);
+our $ERROR;
 
 my %GLOBAL_PREPEND = ('Text::Template' => '');
 
@@ -28,9 +30,9 @@ sub Version {
 }
 
 sub _param {
-    my $kk;
     my ($k, %h) = @_;
-    for $kk ($k, "\u$k", "\U$k", "-$k", "-\u$k", "-\U$k") {
+
+    for my $kk ($k, "\u$k", "\U$k", "-$k", "-\u$k", "-\U$k") {
         return $h{$kk} if exists $h{$kk};
     }
 
@@ -39,8 +41,11 @@ sub _param {
 
 sub always_prepend {
     my $pack = shift;
-    my $old  = $GLOBAL_PREPEND{$pack};
+
+    my $old = $GLOBAL_PREPEND{$pack};
+
     $GLOBAL_PREPEND{$pack} = shift;
+
     $old;
 }
 
@@ -52,8 +57,8 @@ sub always_prepend {
     }
 
     sub new {
-        my $pack      = shift;
-        my %a         = @_;
+        my ($pack, %a) = @_;
+
         my $stype     = uc(_param('type', %a) || "FILE");
         my $source    = _param('source', %a);
         my $untaint   = _param('untaint', %a);
@@ -95,8 +100,10 @@ sub always_prepend {
 # Convert template objects of various types to type STRING,
 # in which the template data is embedded in the object itself.
 sub _acquire_data {
-    my ($self) = @_;
+    my $self = shift;
+
     my $type = $self->{TYPE};
+
     if ($type eq 'STRING') {
         # nothing necessary
     }
@@ -139,16 +146,20 @@ sub _acquire_data {
 }
 
 sub source {
-    my ($self) = @_;
+    my $self = shift;
+
     $self->_acquire_data unless $self->{DATA_ACQUIRED};
+
     return $self->{SOURCE};
 }
 
 sub set_source_data {
     my ($self, $newdata, $type) = @_;
+
     $self->{SOURCE}        = $newdata;
     $self->{DATA_ACQUIRED} = 1;
     $self->{TYPE}          = $type || 'STRING';
+
     1;
 }
 
@@ -158,6 +169,7 @@ sub compile {
     return 1 if $self->{TYPE} eq 'PREPARSED';
 
     return undef unless $self->_acquire_data;
+
     unless ($self->{TYPE} eq 'STRING') {
         my $pack = ref $self;
 
@@ -187,6 +199,7 @@ sub compile {
     my @content;
     my $cur_item = '';
     my $prog_start;
+
     while (@tokens) {
         my $t = shift @tokens;
 
@@ -247,11 +260,13 @@ sub compile {
 
     $self->{TYPE}   = 'PREPARSED';
     $self->{SOURCE} = \@content;
+
     1;
 }
 
 sub prepend_text {
-    my ($self) = @_;
+    my $self = shift;
+
     my $t = $self->{PREPEND};
 
     unless (defined $t) {
@@ -267,8 +282,7 @@ sub prepend_text {
 }
 
 sub fill_in {
-    my $fi_self = shift;
-    my %fi_a    = @_;
+    my ($fi_self, %fi_a) = @_;
 
     unless ($fi_self->{TYPE} eq 'PREPARSED') {
         my $delims = _param('delimiters', %fi_a);
@@ -349,10 +363,12 @@ sub fill_in {
         }
         elsif ($fi_type eq 'PROG') {
             no strict;
+
             my $fi_lcomment = "#line $fi_lineno $fi_filename";
             my $fi_progtext = "package $fi_eval_package; $fi_prepend;\n$fi_lcomment\n$fi_text\n;";
             my $fi_res;
             my $fi_eval_err = '';
+
             if ($fi_safe) {
                 $fi_safe->reval(q{undef $OUT});
                 $fi_res      = $fi_safe->reval($fi_progtext);
@@ -421,8 +437,7 @@ sub append_text_to_output {
 }
 
 sub fill_this_in {
-    my $pack  = shift;
-    my $text  = shift;
+    my ($pack, $text) = splice @_, 0, 2;
 
     my $templ = $pack->new(TYPE => 'STRING', SOURCE => $text, @_)
         or return undef;
@@ -436,6 +451,7 @@ sub fill_this_in {
 
 sub fill_in_string {
     my $string = shift;
+
     my $package = _param('package', @_);
 
     push @_, 'package' => scalar(caller) unless defined $package;
@@ -455,7 +471,8 @@ sub fill_in_file {
 }
 
 sub _default_broken {
-    my %a         = @_;
+    my %a = @_;
+
     my $prog_text = $a{text};
     my $err       = $a{error};
     my $lineno    = $a{lineno};
@@ -528,12 +545,10 @@ sub _install_hash {
         $hashlist = [$hashlist];
     }
 
-    my $hash;
     my @varlist;
 
-    foreach $hash (@$hashlist) {
-        my $name;
-        foreach $name (keys %$hash) {
+    for my $hash (@$hashlist) {
+        for my $name (keys %$hash) {
             my $val = $hash->{$name};
 
             no strict 'refs';
