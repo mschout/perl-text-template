@@ -13,7 +13,7 @@ my $tmpdir = File::Temp->newdir;
 
 use_ok 'Text::Template' or exit 1;
 
-$X::v = $Y::v = 0;		# Suppress `var used only once'
+$X::v = $Y::v = 0;    # Suppress `var used only once'
 
 my $template_1 = <<EOM;
 We will put value of \$v (which is "abc") here -> {\$v}
@@ -25,7 +25,8 @@ EOM
 my $TEMPFILE = catfile($tmpdir, "tt$$");
 
 eval {
-    open my $tmp, '>', $TEMPFILE or die "Couldn't write tempfile $TEMPFILE: $!";
+    open my $tmp, '>', $TEMPFILE
+        or die "Couldn't write tempfile $TEMPFILE: $!";
 
     print $tmp $template_1;
     close $tmp;
@@ -38,15 +39,15 @@ if ($@) {
 
 # (2) Build template from file
 my $template = Text::Template->new('type' => 'FILE', 'source' => $TEMPFILE);
-ok (defined $template) or diag $Text::Template::ERROR;
+ok(defined $template) or diag $Text::Template::ERROR;
 
 # (3) Fill in template from file
-$X::v = "abc";	
+$X::v = "abc";
 my $resultX = <<EOM;
 We will put value of \$v (which is "abc") here -> abc
 We will evaluate 1+1 here -> 2
 EOM
-$Y::v = "ABC";	
+$Y::v = "ABC";
 my $resultY = <<EOM;
 We will put value of \$v (which is "abc") here -> ABC
 We will evaluate 1+1 here -> 2
@@ -60,7 +61,7 @@ $text = $template->fill_in('package' => 'Y');
 is $text, $resultY;
 
 # (5) Simple test of `fill_this_in'
-$text = Text::Template->fill_this_in( $template_1, 'package' => 'X');
+$text = Text::Template->fill_this_in($template_1, 'package' => 'X');
 is $text, $resultX;
 
 # (6) test creation of template from filehandle
@@ -81,16 +82,14 @@ close $tmpl;
 
 # (9) test creation of template from array
 $template = Text::Template->new(
-    type => 'ARRAY', 
-    source => [ 
-        'We will put value of $v (which is "abc") here -> {$v}',
-        "\n",
-        'We will evaluate 1+1 here -> {1+1}',
-        "\n",
+    type   => 'ARRAY',
+    source => [
+        'We will put value of $v (which is "abc") here -> {$v}', "\n",
+        'We will evaluate 1+1 here -> {1+1}',                    "\n"
     ]
 );
 
-ok defined $template; # or diag $Text::Template::ERROR;
+ok defined $template;    # or diag $Text::Template::ERROR;
 
 # (10) test filling in of template from array
 $text = $template->fill_in('package' => 'X');
@@ -103,6 +102,7 @@ is $text, $resultY;
 # (12) Make sure \ is working properly
 # Test added for version 1.11
 $tmpl = Text::Template->new(TYPE => 'STRING', SOURCE => 'B{"\\}"}C{"\\{"}D');
+
 # This should fail if the \ are not interpreted properly.
 $text = $tmpl->fill_in();
 is $text, 'B}C{D';
@@ -121,38 +121,38 @@ is $text, "A\tB";
 # (14-27) Make sure \ is working properly
 # Test added for version 1.11
 # This is a sort of general test.
-my @tests = ('{""}' => '',	# (14)
-	     '{"}"}' => undef,  # (15)
-	     '{"\\}"}' => '}',	# One backslash
-	     '{"\\\\}"}' => undef, # Two backslashes
-	     '{"\\\\\\}"}' => '}', # Three backslashes
-	     '{"\\\\\\\\}"}' => undef, # Four backslashes
-	     '{"\\\\\\\\\\}"}' => '\}', # Five backslashes  (20)
-	     '{"x20"}' => 'x20',
-	     '{"\\x20"}' => ' ',	# One backslash
-	     '{"\\\\x20"}' => '\\x20', # Two backslashes
-	     '{"\\\\\\x20"}' => '\\ ', # Three backslashes
-	     '{"\\\\\\\\x20"}' => '\\\\x20', # Four backslashes  (25)
-	     '{"\\\\\\\\\\x20"}' => '\\\\ ', # Five backslashes
-	     '{"\\x20\\}"}' => ' }', # (27)
-	    );
+my @tests = (
+    '{""}'              => '',           # (14)
+    '{"}"}'             => undef,        # (15)
+    '{"\\}"}'           => '}',          # One backslash
+    '{"\\\\}"}'         => undef,        # Two backslashes
+    '{"\\\\\\}"}'       => '}',          # Three backslashes
+    '{"\\\\\\\\}"}'     => undef,        # Four backslashes
+    '{"\\\\\\\\\\}"}'   => '\}',         # Five backslashes  (20)
+    '{"x20"}'           => 'x20',
+    '{"\\x20"}'         => ' ',          # One backslash
+    '{"\\\\x20"}'       => '\\x20',      # Two backslashes
+    '{"\\\\\\x20"}'     => '\\ ',        # Three backslashes
+    '{"\\\\\\\\x20"}'   => '\\\\x20',    # Four backslashes  (25)
+    '{"\\\\\\\\\\x20"}' => '\\\\ ',      # Five backslashes
+    '{"\\x20\\}"}'      => ' }',         # (27)
+);
 
 while (my ($test, $result) = splice @tests, 0, 2) {
-  my $tmpl = Text::Template->new(TYPE => 'STRING', SOURCE => $test);
-  my $text = $tmpl->fill_in;
+    my $tmpl = Text::Template->new(TYPE => 'STRING', SOURCE => $test);
+    my $text = $tmpl->fill_in;
 
-  ok (! defined $text && ! defined $result || $text eq $result)
-    or diag "expected .$result. got .$text.";
+    ok(!defined $text && !defined $result || $text eq $result)
+        or diag "expected .$result. got .$text.";
 }
-
 
 # (28-30) I discovered that you can't pass a glob ref as your filehandle.
 # MJD 20010827
 # (28) test creation of template from filehandle
 $tmpl = undef;
-ok (open $tmpl, '<', $TEMPFILE) or diag "Couldn't open $TEMPFILE: $!";
+ok(open $tmpl, '<', $TEMPFILE) or diag "Couldn't open $TEMPFILE: $!";
 $template = Text::Template->new(type => 'FILEHANDLE', source => $tmpl);
-ok (defined $template) or diag $Text::Template::ERROR;
+ok(defined $template) or diag $Text::Template::ERROR;
 
 # (29) test filling in of template from filehandle
 $text = $template->fill_in('package' => 'X');

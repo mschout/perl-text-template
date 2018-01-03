@@ -7,7 +7,6 @@ use strict;
 use warnings;
 use Test::More tests => 10;
 
-
 use_ok 'Text::Template' or exit 1;
 
 @Emptyclass1::ISA = 'Text::Template';
@@ -17,14 +16,14 @@ my $tin = q{The value of $foo is: {$foo}};
 
 Text::Template->always_prepend(q{$foo = "global"});
 
-my $tmpl1 = Text::Template->new(TYPE => 'STRING',
-				SOURCE => $tin,		
-			      );
+my $tmpl1 = Text::Template->new(
+    TYPE   => 'STRING',
+    SOURCE => $tin);
 
-my $tmpl2 = Text::Template->new(TYPE => 'STRING',
-			     SOURCE => $tin,		
-			     PREPEND => q{$foo = "template"},
-			     );
+my $tmpl2 = Text::Template->new(
+    TYPE    => 'STRING',
+    SOURCE  => $tin,
+    PREPEND => q{$foo = "template"});
 
 $tmpl1->compile;
 $tmpl2->compile;
@@ -38,14 +37,14 @@ is $t2, 'The value of $foo is: template';
 is $t3, 'The value of $foo is: fillin';
 
 Emptyclass1->always_prepend(q{$foo = 'Emptyclass global';});
-$tmpl1 = Emptyclass1->new(TYPE => 'STRING',
-				SOURCE => $tin,		
-			      );
+$tmpl1 = Emptyclass1->new(
+    TYPE   => 'STRING',
+    SOURCE => $tin);
 
-$tmpl2 = Emptyclass1->new(TYPE => 'STRING',
-			     SOURCE => $tin,		
-			     PREPEND => q{$foo = "template"},
-			     );
+$tmpl2 = Emptyclass1->new(
+    TYPE    => 'STRING',
+    SOURCE  => $tin,
+    PREPEND => q{$foo = "template"});
 
 $tmpl1->compile;
 $tmpl2->compile;
@@ -58,14 +57,14 @@ is $t1, 'The value of $foo is: Emptyclass global';
 is $t2, 'The value of $foo is: template';
 is $t3, 'The value of $foo is: fillin';
 
-$tmpl1 = Emptyclass2->new(TYPE => 'STRING',
-				SOURCE => $tin,		
-			      );
+$tmpl1 = Emptyclass2->new(
+    TYPE   => 'STRING',
+    SOURCE => $tin);
 
-$tmpl2 = Emptyclass2->new(TYPE => 'STRING',
-			     SOURCE => $tin,		
-			     PREPEND => q{$foo = "template"},
-			     );
+$tmpl2 = Emptyclass2->new(
+    TYPE    => 'STRING',
+    SOURCE  => $tin,
+    PREPEND => q{$foo = "template"});
 
 $tmpl1->compile;
 $tmpl2->compile;

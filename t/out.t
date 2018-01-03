@@ -32,17 +32,15 @@ $templateOUT = Text::Template->new('type' => 'STRING', 'source' => $templateOUT)
 isa_ok $templateOUT, 'Text::Template';
 
 # Fill in templates
-my $text = $template->fill_in();
+my $text    = $template->fill_in();
 my $textOUT = $templateOUT->fill_in();
 
 # (1) They should be the same
 is $text, $textOUT;
 
-# Missing:  Test this feature in Safe compartments; 
+# Missing:  Test this feature in Safe compartments;
 # it's a totally different code path.
 # Decision: Put that into safe.t, because that file should
 # be skipped when Safe.pm is unavailable.
 
-
 exit;
-

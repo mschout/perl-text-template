@@ -50,39 +50,42 @@ is $text, $result7;
 # Roy says it does something bad. (Added for 1.20.)
 my $WARNINGS = 0;
 {
-  local $SIG{__WARN__} = sub {$WARNINGS++};
-  local $^W = 1;       # Make sure this is on for this test
-  my $template8 = 'We will put value of $v (which is "good") here -> {defined $v ? "bad" : "good"}';
-  my $result8 = 'We will put value of $v (which is "good") here -> good';
-  my $template = 
-    new Text::Template ('type' => 'STRING', 'source' => $template8);
-  my $text = $template->fill_in(HASH => {'v' => undef});
-  # (8) Did we generate a warning?
-  cmp_ok $WARNINGS, '==', 0;
-  
-  # (9) Was the output correct?
-  is $text, $result8;
+    local $SIG{__WARN__} = sub { $WARNINGS++ };
+    local $^W = 1;    # Make sure this is on for this test
+    my $template8 = 'We will put value of $v (which is "good") here -> {defined $v ? "bad" : "good"}';
+    my $result8   = 'We will put value of $v (which is "good") here -> good';
+    my $template  = Text::Template->new('type' => 'STRING', 'source' => $template8);
+    my $text = $template->fill_in(HASH => { 'v' => undef });
 
-  # (10-11) Let's try that again, with a twist this time
-  $WARNINGS = 0;
-  $text = $template->fill_in(HASH => [{'v' => 17}, {'v' => undef}]);
-  # (10) Did we generate a warning?
-  cmp_ok $WARNINGS, '==', 0;
-  
-  # (11) Was the output correct?
-  SKIP: {
-      skip 'not supported before 5.005', 1 unless $] >= 5.005;
+    # (8) Did we generate a warning?
+    cmp_ok $WARNINGS, '==', 0;
 
-      is $text, $result8;
-  }
+    # (9) Was the output correct?
+    is $text, $result8;
+
+    # (10-11) Let's try that again, with a twist this time
+    $WARNINGS = 0;
+    $text = $template->fill_in(HASH => [ { 'v' => 17 }, { 'v' => undef } ]);
+
+    # (10) Did we generate a warning?
+    cmp_ok $WARNINGS, '==', 0;
+
+    # (11) Was the output correct?
+    SKIP: {
+        skip 'not supported before 5.005', 1 unless $] >= 5.005;
+
+        is $text, $result8;
+    }
 }
-
 
 # (12) Now we'll test the multiple-hash option  (Added for 1.20.)
 $text = Text::Template::fill_in_string(q{$v: {$v}.  @v: [{"@v"}].},
-				       HASH => [{'v' => 17}, 
-						{'v' => ['a', 'b', 'c']},
-						{'v' => \23},
-					       ]);
+    HASH => [
+        { 'v' => 17 },
+        { 'v' => [ 'a', 'b', 'c' ] },
+        { 'v' => \23 }
+    ]
+);
+
 my $result = q{$v: 23.  @v: [a b c].};
 is $text, $result;

@@ -8,16 +8,15 @@ use Test::More tests => 21;
 
 use_ok 'Text::Template' or exit 1;
 
-my $r = int(rand(10000));
+my $r    = int(rand(10000));
 my $file = "tt$r";
 
 # makes its arguments tainted
 sub taint {
-  for (@_) {
-    $_ .= substr($0,0,0);       # LOD
-  }
+    for (@_) {
+        $_ .= substr($0, 0, 0);    # LOD
+    }
 }
-
 
 my $template = 'The value of $n is {$n}.';
 
@@ -26,31 +25,33 @@ print T $template, "\n";
 close T or die "Couldn't finish temporary file $file: $!";
 
 sub should_fail {
-  my $obj = Text::Template->new(@_);
-  eval {$obj->fill_in()};
-  if ($@) {
-    pass $@;
-  } else {
-    fail q[didn't fail];
-  }
+    my $obj = Text::Template->new(@_);
+    eval { $obj->fill_in() };
+    if ($@) {
+        pass $@;
+    }
+    else {
+        fail q[didn't fail];
+    }
 }
 
 sub should_work {
-  my $obj = Text::Template->new(@_);
-  eval {$obj->fill_in()};
-  if ($@) {
-    fail $@;
-  } else {
-    pass;
-  }
+    my $obj = Text::Template->new(@_);
+    eval { $obj->fill_in() };
+    if ($@) {
+        fail $@;
+    }
+    else {
+        pass;
+    }
 }
 
 sub should_be_tainted {
-  ok !Text::Template::_is_clean($_[0]);
+    ok !Text::Template::_is_clean($_[0]);
 }
 
 sub should_be_clean {
-  ok Text::Template::_is_clean($_[0]);
+    ok Text::Template::_is_clean($_[0]);
 }
 
 # Tainted filename should die with and without UNTAINT option
@@ -87,8 +88,8 @@ should_work TYPE => 'string', SOURCE => $template;
 should_work TYPE => 'string', SOURCE => $template, UNTAINT => 1;
 
 # (16-19)
-my $array = [ $template ];
-my $tarray = [ $ttemplate ];
+my $array  = [$template];
+my $tarray = [$ttemplate];
 should_fail TYPE => 'array', SOURCE => $tarray;
 should_fail TYPE => 'array', SOURCE => $tarray, UNTAINT => 1;
 should_work TYPE => 'array', SOURCE => $array;
@@ -101,4 +102,3 @@ Text::Template::_unconditionally_untaint($tfile);
 should_be_clean($tfile);
 
 END { unlink $file }
-

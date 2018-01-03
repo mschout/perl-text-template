@@ -19,12 +19,12 @@ use_ok 'Text::Template' or exit 1;
 
 my ($BADOP, $FAILURE);
 if ($^O eq 'MacOS') {
-  $BADOP = qq{};
-  $FAILURE = q{};
+    $BADOP   = qq{};
+    $FAILURE = q{};
 }
 else {
-  $BADOP = qq{kill 0};
-  $FAILURE = q{Program fragment at line 1 delivered error ``kill trapped by operation mask''};
+    $BADOP   = qq{kill 0};
+    $FAILURE = q{Program fragment at line 1 delivered error ``kill trapped by operation mask''};
 }
 
 our $v = 119;
@@ -63,10 +63,10 @@ ok defined $text3;
 # (6) Make sure the output was actually correct
 is $text1, $goodoutput;
 
-
 my $badtemplate     = qq{This should fail: { $BADOP; 'NOFAIL' }};
 my $badnosafeoutput = q{This should fail: NOFAIL};
-my $badsafeoutput   = q{This should fail: Program fragment delivered error ``kill trapped by operation mask at template line 1.''};
+my $badsafeoutput =
+    q{This should fail: Program fragment delivered error ``kill trapped by operation mask at template line 1.''};
 
 $template1 = Text::Template->new('type' => 'STRING', 'source' => $badtemplate);
 isa_ok $template1, 'Text::Template';
@@ -99,7 +99,7 @@ is $text2, $text3;
 is $text1, $badnosafeoutput;
 
 # (14) text2 should yield badsafeoutput
-$text2 =~ s/'kill'/kill/;  # 5.8.1 added quote marks around the op name
+$text2 =~ s/'kill'/kill/;    # 5.8.1 added quote marks around the op name
 is $text2, $badsafeoutput;
 
 my $template = q{{$x=1}{$x+1}};
@@ -117,17 +117,19 @@ $text2 = $template1->fill_in(SAFE => Safe->new);
 is $text1, $text2;
 
 # (16) Try the BROKEN routine in safe compartments
-sub my_broken { 
-  my %a = @_; $a{error} =~ s/ at.*//s;
-  "OK! text:$a{text} error:$a{error} lineno:$a{lineno} arg:$a{arg}" ;
+sub my_broken {
+    my %a = @_;
+    $a{error} =~ s/ at.*//s;
+    "OK! text:$a{text} error:$a{error} lineno:$a{lineno} arg:$a{arg}";
 }
 
 my $templateB = Text::Template->new(TYPE => 'STRING', SOURCE => '{die}');
 isa_ok $templateB, 'Text::Template';
 
-$text1 = $templateB->fill_in(BROKEN => \&my_broken, 
-			     BROKEN_ARG => 'barg',
-			     SAFE => Safe->new);
+$text1 = $templateB->fill_in(
+    BROKEN     => \&my_broken,
+    BROKEN_ARG => 'barg',
+    SAFE       => Safe->new);
 
 my $result1 = qq{OK! text:die error:Died lineno:1 arg:barg};
 is $text1, $result1;

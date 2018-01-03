@@ -12,7 +12,7 @@ use_ok 'Text::Template::Preprocess' or exit 1;
 my $tin = q{The value of $foo is: {$foo}.};
 
 sub tester {
-  1; #dummy preprocessor to cause the bug described.
+    1;    # dummy preprocessor to cause the bug described.
 }
 
 my $tmpl1 = Text::Template::Preprocess->new(TYPE => 'STRING', SOURCE => $tin);
@@ -20,7 +20,7 @@ my $tmpl1 = Text::Template::Preprocess->new(TYPE => 'STRING', SOURCE => $tin);
 $tmpl1->compile;
 
 my $t1 = $tmpl1->fill_in(
-  HASH => {foo => 'things'},
-  PREPROCESSOR => \&tester);
+    HASH         => { foo => 'things' },
+    PREPROCESSOR => \&tester);
 
 is $t1, 'The value of $foo is: things.';

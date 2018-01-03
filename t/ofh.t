@@ -9,7 +9,9 @@ use Test::More tests => 3;
 
 use_ok 'Text::Template' or exit 1;
 
-my $template = new Text::Template TYPE => 'STRING', SOURCE => q{My process ID is {$$}};
+my $template = new Text::Template
+    TYPE   => 'STRING',
+    SOURCE => q{My process ID is {$$}};
 
 my $of = "t$$";
 END { unlink $of }

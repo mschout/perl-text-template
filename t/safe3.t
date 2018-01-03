@@ -34,18 +34,21 @@ This line should have several numbers:
 my $c = new Safe;
 
 # Build templates from string
-$template = new Text::Template ('type' => 'STRING', 'source' => $template,
-			       SAFE => $c)
-  or die;
-$templateOUT = new Text::Template ('type' => 'STRING', 'source' => $templateOUT,
-				  SAFE => $c)
-  or die;
+$template = new Text::Template(
+    type   => 'STRING',
+    source => $template,
+    SAFE   => $c) or die;
+
+$templateOUT = new Text::Template(
+    type   => 'STRING',
+    source => $templateOUT,
+    SAFE    => $c) or die;
 
 # Fill in templates
 my $text = $template->fill_in()
-  or die;
+    or die;
 my $textOUT = $templateOUT->fill_in()
-  or die;
+    or die;
 
 # (1) They should be the same
 is $text, $textOUT;
@@ -62,15 +65,16 @@ is $text, $textOUT;
 # Also reported by Daini Xie.
 
 {
-  my $template = q{{$OUT = 'x'}y{$OUT .= 'z'}};
-  my $expected = "xyz";
-  my $s = Safe->new;
-  my $o = Text::Template->new(type => 'string',
-                              source => $template);
+    my $template = q{{$OUT = 'x'}y{$OUT .= 'z'}};
+    my $expected = "xyz";
+    my $s        = Safe->new;
+    my $o        = Text::Template->new(
+        type   => 'string',
+        source => $template);
 
-  for (1..2) {
-    my $r = $o->fill_in(SAFE => $s);
+    for (1 .. 2) {
+        my $r = $o->fill_in(SAFE => $s);
 
-    is $r, $expected;
-  }
+        is $r, $expected;
+    }
 }
