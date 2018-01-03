@@ -33,7 +33,8 @@ sub _param {
     for $kk ($k, "\u$k", "\U$k", "-$k", "-\u$k", "-\U$k") {
         return $h{$kk} if exists $h{$kk};
     }
-    return;
+
+    return undef;
 }
 
 sub always_prepend {
@@ -468,16 +469,14 @@ sub _default_broken {
 sub _load_text {
     my $fn = shift;
 
-    local *F;
-
-    unless (open F, $fn) {
+    open my $fh, '<', $fn or do {
         $ERROR = "Couldn't open file $fn: $!";
         return undef;
-    }
+    };
 
     local $/;
 
-    <F>;
+    <$fh>;
 }
 
 sub _is_clean {
