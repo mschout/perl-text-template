@@ -5,11 +5,12 @@ use strict;
 use warnings;
 use lib 'blib/lib';
 use Test::More tests => 21;
+use File::Temp;
 
 use_ok 'Text::Template' or exit 1;
 
-my $r    = int(rand(10000));
-my $file = "tt$r";
+my $tmpfile = File::Temp->new;
+my $file    = $tmpfile->filename;
 
 # makes its arguments tainted
 sub taint {
@@ -101,5 +102,3 @@ Text::Template::_unconditionally_untaint($ttemplate);
 should_be_clean($ttemplate);
 Text::Template::_unconditionally_untaint($tfile);
 should_be_clean($tfile);
-
-END { unlink $file }

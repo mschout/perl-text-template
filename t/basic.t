@@ -6,10 +6,9 @@
 use strict;
 use warnings;
 use Test::More tests => 33;
-use File::Spec::Functions qw(catfile);
 use File::Temp;
 
-my $tmpdir = File::Temp->newdir;
+my $tmpfile = File::Temp->new;
 
 use_ok 'Text::Template' or exit 1;
 
@@ -22,7 +21,7 @@ EOM
 
 # (1) Construct temporary template file for testing
 # file operations
-my $TEMPFILE = catfile($tmpdir, "tt$$");
+my $TEMPFILE = $tmpfile->filename;
 
 eval {
     open my $tmp, '>', $TEMPFILE

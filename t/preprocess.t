@@ -6,10 +6,12 @@
 use strict;
 use warnings;
 use Test::More tests => 9;
+use File::Temp;
 
 use_ok 'Text::Template::Preprocess' or exit 1;
 
-my $TMPFILE = "tt$$";
+my $tmpfile = File::Temp->new;
+my $TMPFILE = $tmpfile->filename;
 
 my $py = sub { tr/x/y/ };
 my $pz = sub { tr/x/z/ };
@@ -39,5 +41,3 @@ for my $trial (1, 0) {
         is $o, $result[$test];
     }
 }
-
-unlink $TMPFILE;

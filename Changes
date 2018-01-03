@@ -29,6 +29,7 @@ Revision history for Text::Template
         + use three-arg form of open()
         + don't use indirect object syntax
         + don't use bareword file handles
+        + use File::Temp to generate temporary files
 
 1.47  2017-02-27
     - Fix longstanding memory leak in _scrubpkg() [#22031]
