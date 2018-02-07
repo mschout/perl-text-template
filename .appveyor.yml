@@ -1,0 +1,25 @@
+---
+clone_folder: C:\projects\perl-text-template
+
+cache:
+  - C:\strawberry
+  - C:\cygwin
+
+environment:
+  matrix:
+    - perl_type: cygwin
+    - perl_type: strawberry
+
+install:
+  - 'call .appveyor.cmd perl_setup'
+  - '%perl% -V'
+  - '%cpanm% --quiet --notest --skip-satisfied Dist::Zilla Test::Pod'
+  - '%dzil% authordeps --missing | %cpanm% --quiet --notest'
+  - '%dzil% listdeps --missing | %cpanm% --verbose'
+  - git config --global user.name "AppVeyor"
+  - git config --global user.email "appveyor-not-for-mail@appveyor.com"
+
+build: off
+
+test_script:
+  - '%dzil% smoke --release --author'

@@ -35,3 +35,4 @@ MANIFEST.SKIP
 Text-Template-.+.tar.gz
 ^MYMETA\.json$
 ^tools/.*$
+^\.appveyor\..*
