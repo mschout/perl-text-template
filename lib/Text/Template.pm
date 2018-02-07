@@ -1968,24 +1968,12 @@ method.  It is passed a list of pairs with these entries:
   text   - the text that will be appended
   type   - where the text came from: TEXT for literal text, PROG for code
 
-=head1 AUTHOR
+=head1 HISTORY
 
-Mark Jason Dominus, Plover Systems
+Originally written by Mark Jason Dominus, Plover Systems (versions 0.01 - 1.46)
 
-Please send questions and other remarks about this software to
-C<mjd-perl-template+@plover.com>
-
-You can join a very low-volume (E<lt>10 messages per year) mailing
-list for announcements about this package.  Send an empty note to
-C<mjd-perl-template-request@plover.com> to join.
-
-For updates, visit C<http://www.plover.com/~mjd/perl/Template/>.
-
-=head1 SUPPORT
-
-This software may have bugs.  Suggestions and bug reports are always welcome.
-Send them to C<mjd-perl-template+@plover.com>.  (That is my address, not the
-address of the mailing list.  The mailing list address is a secret.)
+Maintainership transferred to Michael Schout E<lt>mschout@cpan.orgE<gt> in version
+1.47
 
 =head1 THANKS
 
