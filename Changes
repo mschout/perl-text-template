@@ -1,6 +1,8 @@
 Revision history for Text::Template
 
 {{$NEXT}}
+
+1.48  2018-02-07
     - remove COPYING and Artistic files from the dist.  These are replaced by
       the Dist::Zilla generated LICENSE file.
     - use strict/warnings (thanks Mohammad S Anwar)
