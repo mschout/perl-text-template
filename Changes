@@ -1,6 +1,8 @@
 Revision history for Text::Template
 
 {{$NEXT}}
+
+1.49  2018-02-07
     - Fix failing tests in v1.48 under perl < 5.8.9
 
 1.48  2018-02-07
