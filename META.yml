@@ -22,10 +22,10 @@ name: Text-Template
 provides:
   Text::Template:
     file: lib/Text/Template.pm
-    version: '1.48'
+    version: '1.49'
   Text::Template::Preprocess:
     file: lib/Text/Template/Preprocess.pm
-    version: '1.48'
+    version: '1.49'
 requires:
   Carp: '0'
   Exporter: '0'
@@ -37,5 +37,5 @@ resources:
   bugtracker: https://github.com/mschout/perl-text-template/issues
   homepage: https://github.com/mschout/perl-text-template
   repository: https://github.com/mschout/perl-text-template.git
-version: '1.48'
+version: '1.49'
 x_serialization_backend: 'YAML::Tiny version 1.70'
