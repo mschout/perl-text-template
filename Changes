@@ -1,6 +1,8 @@
 Revision history for Text::Template
 
 {{$NEXT}}
+
+1.51  2018-03-04
     - Add test for nested tags breakage that happened in v1.46
     - Turn off strict+warnings in sections where template code is eval'ed
       [github #9]
