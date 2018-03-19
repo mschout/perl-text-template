@@ -1,6 +1,7 @@
 Revision history for Text::Template
 
 {{$NEXT}}
+    - Fix possible 'Subroutine ... redefined' warning (Github #10)
 
 1.51  2018-03-04
     - Add test for nested tags breakage that happened in v1.46

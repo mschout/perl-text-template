@@ -558,6 +558,7 @@ sub _install_hash {
             my $val = $hash->{$name};
 
             no strict 'refs';
+            no warnings 'redefine';
 
             local *SYM = *{"$ {dest}::$name"};
 
