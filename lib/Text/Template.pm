@@ -65,6 +65,7 @@ sub always_prepend {
         my $prepend   = _param('prepend', %a);
         my $alt_delim = _param('delimiters', %a);
         my $broken    = _param('broken', %a);
+        my $encoding  = _param('encoding', %a);
 
         unless (defined $source) {
             require Carp;
@@ -77,10 +78,11 @@ sub always_prepend {
         }
 
         my $self = {
-            TYPE    => $stype,
-            PREPEND => $prepend,
-            UNTAINT => $untaint,
-            BROKEN  => $broken,
+            TYPE     => $stype,
+            PREPEND  => $prepend,
+            UNTAINT  => $untaint,
+            BROKEN   => $broken,
+            ENCODING => $encoding,
             (defined $alt_delim ? (DELIM => $alt_delim) : ())
         };
 
@@ -114,9 +116,16 @@ sub _acquire_data {
             # _load_text already set $ERROR
             return undef;
         }
+
         if ($self->{UNTAINT} && _is_clean($self->{SOURCE})) {
             _unconditionally_untaint($data);
         }
+
+        if (defined $self->{ENCODING}) {
+            require Encode;
+            $data = Encode::decode($self->{ENCODING}, $data, &Encode::FB_CROAK);
+        }
+
         $self->{TYPE}     = 'STRING';
         $self->{FILENAME} = $self->{SOURCE};
         $self->{SOURCE}   = $data;
@@ -933,6 +942,18 @@ its value should be a reference to an array of two strings.  The first
 string is the string that signals the beginning of each program
 fragment, and the second string is the string that signals the end of
 each program fragment.  See L<"Alternative Delimiters">, below.
+
+=item C<ENCODING>
+
+You may also add a C<ENCODING> option.  If this option is present, and the
+C<SOURCE> is a C<FILE>, then the data will be decoded from the given encoding
+using the L<Encode> module.  You can use any encoding that L<Encode> recognizes.
+E.g.:
+
+	Text::Template->new(
+		TYPE     => 'FILE',
+		ENCODING => 'UTF-8',
+		SOURCE   => 'xyz.tmpl');
 
 =item C<UNTAINT>
 
