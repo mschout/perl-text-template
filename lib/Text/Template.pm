@@ -601,6 +601,8 @@ sub TTerror { $ERROR }
 
 __END__
 
+=encoding UTF-8
+
 =head1 SYNOPSIS
 
  use Text::Template;
@@ -2011,76 +2013,77 @@ Maintainership transferred to Michael Schout E<lt>mschout@cpan.orgE<gt> in versi
 Many thanks to the following people for offering support,
 encouragement, advice, bug reports, and all the other good stuff.  
 
-David H. Adler /
-Joel Appelbaum /
-Klaus Arnhold /
-AntE<oacute>nio AragE<atilde>o /
-Kevin Atteson /
-Chris.Brezil /
-Mike Brodhead /
-Tom Brown /
-Dr. Frank Bucolo /
-Tim Bunce /
-Juan E. Camacho /
-Itamar Almeida de Carvalho /
-Joseph Cheek /
-Gene Damon /
-San Deng /
-Bob Dougherty /
-Marek Grac /
-Dan Franklin /
-gary at dls.net /
-Todd A. Green /
-Donald L. Greer Jr. /
-Michelangelo Grigni /
-Zac Hansen /
-Tom Henry /
-Jarko Hietaniemi /
-Matt X. Hunter /
-Robert M. Ioffe /
-Daniel LaLiberte /
-Reuven M. Lerner /
-Trip Lilley / 
-Yannis Livassof /
-Val Luck /
-Kevin Madsen /
-David Marshall /
-James Mastros /
-Joel Meulenberg /
-Jason Moore /
-Sergey Myasnikov /
-Chris Nandor /
-Bek Oberin /
-Steve Palincsar /
-Ron Pero /
-Hans Persson /
-Sean Roehnelt /
-Jonathan Roy /
-Shabbir J. Safdar /
-Jennifer D. St Clair /
-Uwe Schneider /
-Randal L. Schwartz /
-Michael G Schwern /
-Yonat Sharon /
-Brian C. Shensky /
-Niklas Skoglund /
-Tom Snee /
-Fred Steinberg /
-Hans Stoop /
-Michael J. Suzio /
-Dennis Taylor /
-James H. Thompson /
-Shad Todd /
-Lieven Tomme /
-Lorenzo Valdettaro /
-Larry Virden /
-Andy Wardley /
-Archie Warnock /
-Chris Wesley /
-Matt Womer /
-Andrew G Wood /
-Daini Xie /
-Michaely Yeung
+=for :list
+* Andrew G Wood
+* Andy Wardley
+* António Aragão
+* Archie Warnock
+* Bek Oberin
+* Bob Dougherty
+* Brian C. Shensky
+* Chris Nandor
+* Chris Wesley
+* Chris.Brezil
+* Daini Xie
+* Dan Franklin
+* Daniel LaLiberte
+* David H. Adler
+* David Marshall
+* Dennis Taylor
+* Donald L. Greer Jr.
+* Dr. Frank Bucolo
+* Fred Steinberg
+* Gene Damon
+* Hans Persson
+* Hans Stoop
+* Itamar Almeida de Carvalho
+* James H. Thompson
+* James Mastros
+* Jarko Hietaniemi
+* Jason Moore
+* Jennifer D. St Clair
+* Joel Appelbaum
+* Joel Meulenberg
+* Jonathan Roy
+* Joseph Cheek
+* Juan E. Camacho
+* Kevin Atteson
+* Kevin Madsen
+* Klaus Arnhold
+* Larry Virden
+* Lieven Tomme
+* Lorenzo Valdettaro
+* Marek Grac
+* Matt Womer
+* Matt X. Hunter
+* Michael G Schwern
+* Michael J. Suzio
+* Michaely Yeung
+* Michelangelo Grigni
+* Mike Brodhead
+* Niklas Skoglund
+* Randal L. Schwartz
+* Reuven M. Lerner
+* Robert M. Ioffe
+* Ron Pero
+* San Deng
+* Sean Roehnelt
+* Sergey Myasnikov
+* Shabbir J. Safdar
+* Shad Todd
+* Steve Palincsar
+* Tim Bunce
+* Todd A. Green
+* Tom Brown
+* Tom Henry
+* Tom Snee
+* Trip Lilley
+* Uwe Schneider
+* Val Luck
+* Yannis Livassof
+* Yonat Sharon
+* Zac Hansen
+* gary at dls.net
 
 Special thanks to:
 
