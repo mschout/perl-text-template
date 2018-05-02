@@ -625,8 +625,8 @@ __END__
  # Pass many variables explicitly
  $hash = { recipient => 'Abed-Nego',
            friends => [ 'me', 'you' ],
-           enemies => { loathsome => 'Bill Gates',
-                        fearsome => 'Larry Ellison' },
+           enemies => { loathsome => 'Saruman',
+                        fearsome => 'Sauron' },
          };
  $text = $template->fill_in(HASH => $hash, ...);
  # $recipient is Abed-Nego,
@@ -698,7 +698,7 @@ file C<formletter.tmpl>:
 The result of filling in this template is a string, which might look
 something like this:
 
-    Dear Mr. Gates,
+    Dear Mr. Smith,
 
     It has come to our attention that you are delinquent in your
     February payment.  Please remit
@@ -721,8 +721,8 @@ template into the example result, and prints it out:
     my @monthname = qw(January February March April May June
                        July August September October November December);
     my %vars = (title           => 'Mr.',
-                firstname       => 'Bill',
-                lastname        => 'Gates',
+                firstname       => 'John',
+                lastname        => 'Smith',
                 last_paid_month => 1,   # February
                 amount          => 392.12,
                 monthname       => \@monthname);
