@@ -3,7 +3,10 @@
 use strict;
 use warnings;
 use Test::More;
-use Test::Warnings;
+
+# Non-CORE module(s)
+if (! eval { require Test::Warnings; 1; } ) { plan skip_all => '[ Test::Warnings ] is required for testing' };
+
 use Text::Template;
 
 my $template = <<'EOT';
