@@ -1,6 +1,8 @@
 Revision history for Text::Template
 
 {{$NEXT}}
+
+1.54  2019-01-13
     - Fix tempfile creation during tests on Win32
 
 1.53  2018-05-02
