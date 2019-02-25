@@ -2,14 +2,23 @@
 
 use strict;
 use warnings;
+use Text::Template;
 
 # Minimum Test::More version; 0.94+ is required for `done_testing`
-BEGIN { if (! eval { require Test::More; "$Test::More::VERSION" >= 0.94; } ) { use Test::More; plan skip_all => '[ Test::More v0.94+ ] is required for testing' } };
+BEGIN {
+    unless (eval { require Test::More; "$Test::More::VERSION" >= 0.94; }) {
+        Test::More::plan(skip_all => '[ Test::More v0.94+ ] is required for testing');
+    }
 
-# Non-CORE module(s)
-if (! eval { require Test::Warnings; 1; } ) { plan skip_all => '[ Test::Warnings ] is required for testing' };
+    Test::More->import;
 
-use Text::Template;
+    # Non-CORE module(s)
+    unless (eval { require Test::Warnings; 1; }) {
+        plan(skip_all => '[ Test::Warnings ] is required for testing');
+    }
+
+    Test::Warnings->import;
+}
 
 my $template = <<'EOT';
 {{

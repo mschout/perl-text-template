@@ -8,7 +8,9 @@ use Encode;
 use File::Temp;
 
 # Non-CORE module(s)
-if (! eval { require Test::More::UTF8; 1; } ) { plan skip_all => '[ Test::More::UTF8 ] is required for testing' };
+unless (eval { require Test::More::UTF8; 1; } ) {
+    plan skip_all => '[ Test::More::UTF8 ] is required for testing';
+}
 
 plan tests => 3;
 

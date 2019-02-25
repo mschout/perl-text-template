@@ -45,9 +45,9 @@ is $text, 'package is safe root';
 # (4) When a package is specified in safe mode, we should use the
 # default safe root, after aliasing to the specified package
 TODO: {
-local $TODO = "test fails when tested with TAP/Devel::Cover" if defined $Devel::Cover::VERSION;
-$text = $t->fill_in(SAFE => $c, PACKAGE => 'Q');
-is $text, 'package is Q';
+    local $TODO = "test fails when tested with TAP/Devel::Cover" if defined $Devel::Cover::VERSION;
+    $text = $t->fill_in(SAFE => $c, PACKAGE => 'Q');
+    is $text, 'package is Q';
 }
 
 # Now let's see if hash vars are installed properly into safe templates
@@ -68,18 +68,18 @@ is $text, 'hash is good6';
 
 # (7) Now in the default root of the safe compartment
 TODO: {
-local $TODO = "test fails when tested with TAP/Devel::Cover" if defined $Devel::Cover::VERSION;
-$text = $t->fill_in(HASH => { H => 'good7' }, SAFE => $c);
-is $text, 'hash is good7';
+    local $TODO = "test fails when tested with TAP/Devel::Cover" if defined $Devel::Cover::VERSION;
+    $text = $t->fill_in(HASH => { H => 'good7' }, SAFE => $c);
+    is $text, 'hash is good7';
 }
 
 # (8) Now in the default root after aliasing to a package that
 # got the hash stuffed in
 our $H;
 TODO: {
-local $TODO = "test fails when tested with TAP/Devel::Cover" if defined $Devel::Cover::VERSION;
-$text = $t->fill_in(HASH => { H => 'good8' }, SAFE => $c, PACKAGE => 'Q2');
-is $text, 'hash is good8';
+    local $TODO = "test fails when tested with TAP/Devel::Cover" if defined $Devel::Cover::VERSION;
+    $text = $t->fill_in(HASH => { H => 'good8' }, SAFE => $c, PACKAGE => 'Q2');
+    is $text, 'hash is good8';
 }
 
 # Now let's make sure that none of the packages leaked on each other.

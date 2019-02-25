@@ -7,8 +7,14 @@ use strict;
 use warnings;
 use Text::Template;
 
-# Minimum Test::More version; 0.94+ is required for `done_testing`
-BEGIN { if (! eval { require Test::More; "$Test::More::VERSION" >= 0.94; } ) { use Test::More; plan skip_all => '[ Test::More v0.94+ ] is required for testing' } };
+BEGIN {
+    # Minimum Test::More version; 0.94+ is required for `done_testing`
+    unless (eval { require Test::More; "$Test::More::VERSION" >= 0.94; }) {
+        Test::More::plan(skip_all => '[ Test::More v0.94+ ] is required for testing');
+    }
+
+    Test::More->import;
+}
 
 my $tmpl = Text::Template->new(
     TYPE       => 'STRING',
