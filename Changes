@@ -1,6 +1,8 @@
 Revision history for Text::Template
 
 {{$NEXT}}
+
+1.56  2019-07-09
     - Fix typos in Changes
 
 1.55  2019-02-25
