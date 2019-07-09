@@ -1,6 +1,7 @@
 Revision history for Text::Template
 
 {{$NEXT}}
+    - Fix typos in Changes
 
 1.55  2019-02-25
     - Improve AppVeyor tests for older Perls (Thanks Roy Ivy)
