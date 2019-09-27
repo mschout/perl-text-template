@@ -1,6 +1,8 @@
 Revision history for Text::Template
 
 {{$NEXT}}
+
+1.58  2019-09-27
    - Remove hard coded (old) version number from README
 
 1.57  2019-09-09
