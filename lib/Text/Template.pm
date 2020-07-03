@@ -653,7 +653,7 @@ __END__
  $text = $template->fill_in(PREPEND => q{use strict 'vars';}, ...);
 
  use Text::Template 'fill_in_string';
- $text = fill_in_string( <<EOM, PACKAGE => 'T', ...);
+ $text = fill_in_string( <<'EOM', PACKAGE => 'T', ...);
  Dear {$recipient},
  Pay me at once.
         Love, 
