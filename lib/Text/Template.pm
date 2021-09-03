@@ -981,7 +981,7 @@ for help with this feature.
 =item C<PREPEND>
 
 This option is passed along to the C<fill_in> call unless it is
-overridden in the arguments to C<fill_in>.  See L<C<PREPEND> feature
+overridden in the arguments to C<fill_in>.  See L<C<PREPEND>> feature
 and using C<strict> in templates> below.
 
 =item C<BROKEN>
