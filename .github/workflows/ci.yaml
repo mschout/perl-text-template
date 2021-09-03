@@ -1,0 +1,36 @@
+name: Run Tests
+on:
+  push:
+    branches: [ master ]
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: ['ubuntu-latest']
+        perl:
+          - '5.20'
+          - '5.28'
+          - '5.30'
+          - '5.32'
+          - '5.34'
+    name: Perl ${{ matrix.perl }} on ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up perl
+        uses: shogo82148/actions-setup-perl@v1
+        with:
+          perl-version: ${{ matrix.perl }}
+      - run: perl -V
+      - run: git config --global user.name "Github Tests"
+      - run: git config --global user.email not-for-mail@github-actions.com
+      - name: Cache CPAN Deps
+        id: cache-cpan-deps
+        uses: actions/cache@v2
+        with:
+          path: /opt/hostedtoolcache/perl
+          key: cpan-deps-${{ matrix.os }}-${{ matrix.perl }}-${{ hashFiles('dist.ini') }}
+      - run: cpanm -q --notest Dist::Zilla
+      - run: dzil authordeps --missing | cpanm -q --notest
+      - run: dzil listdeps  --author --missing | cpanm --verbose --notest
+      - run: dzil smoke --author
