@@ -1,6 +1,7 @@
 Revision history for Text::Template
 
 {{$NEXT}}
+   - Fix another POD syntax error.
 
 1.59  2020-07-03
    - Fix syntax error in POD example code.
