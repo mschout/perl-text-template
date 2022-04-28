@@ -1,6 +1,7 @@
 Revision history for Text::Template
 
 {{$NEXT}}
+  - Skip taint tests if perl was compiled with taint disabled.  (Thanks Neil Bowers) [GitHub PR #20]
 
 1.60  2021-09-03
    - Fix another POD syntax error.
